@@ -1,0 +1,7 @@
+{
+  "name": "Heavy Hub - Equipment Marketplace",
+  "description": "A premium marketplace for buying, selling, and renting heavy construction equipment with real-time logistics estimation and verified dealer listings.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

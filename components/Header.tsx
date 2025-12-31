@@ -1,48 +1,95 @@
 
 import React from 'react';
+import { HeaderProps } from '../types';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 
-interface HeaderProps {
-  darkMode: boolean;
-  onToggleDarkMode: () => void;
-  onLogoClick: () => void;
-}
+const Header: React.FC<HeaderProps> = ({
+  darkMode,
+  onToggleDarkMode,
+  onLogoClick,
+  onLoginClick,
+  onLogout,
+  onCreateListing,
+  onMyFleetClick,
+  onManageListingsClick,
+  user
+}) => {
+  const { t } = useTranslation();
 
-const Header: React.FC<HeaderProps> = ({ darkMode, onToggleDarkMode, onLogoClick }) => {
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 bg-white dark:bg-surface-dark px-6 lg:px-10 py-3 shadow-sm transition-colors">
-      <div 
-        className="flex items-center gap-4 text-slate-900 dark:text-white cursor-pointer group"
+    <header className="fixed top-0 left-0 right-0 h-[65px] bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 z-50 flex items-center px-6 lg:px-10 justify-between transition-colors">
+      <div
+        className="flex items-center gap-2 cursor-pointer group"
         onClick={onLogoClick}
       >
-        <div className="size-8 text-primary flex items-center justify-center bg-primary/10 rounded-lg group-hover:scale-110 transition-transform">
-          <span className="material-symbols-outlined !text-[28px]">agriculture</span>
+        <div className="bg-primary p-1.5 rounded-lg group-hover:scale-105 transition-transform">
+          <span className="material-symbols-outlined text-white text-xl">construction</span>
         </div>
-        <h2 className="text-xl font-bold leading-tight tracking-[-0.015em]">Heavy Hub</h2>
+        <h2 className="text-xl font-bold leading-tight tracking-[-0.015em]">{t('app_title')}</h2>
       </div>
 
-      <div className="flex flex-1 justify-end gap-6 items-center">
-        <nav className="hidden md:flex items-center gap-8">
-          <a className="text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal" href="#">My Fleet</a>
-          <a className="text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal" href="#">Manage Listings</a>
-        </nav>
-        
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={onToggleDarkMode}
-            className="p-2 text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <span className="material-symbols-outlined">{darkMode ? 'light_mode' : 'dark_mode'}</span>
-          </button>
-          
-          <button className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-            <span className="material-symbols-outlined">notifications</span>
-          </button>
-          
-          <div 
-            className="bg-center bg-no-repeat bg-cover rounded-full size-10 border-2 border-slate-100 dark:border-slate-700 cursor-pointer hover:border-primary transition-colors" 
-            style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDJM3M85NkN2JN7Ol_y8YfASD3qHwUdfi2l4uoEqLwq6VHIXcGwJ4ZwYBc4QSgqFQS92ouqdoWgcNGKRJ7PyGbOFE1vkjtaeknoehYuAxyjSyvvWjfYLYHcioal7UxWNIEq9T0ZY8Wa_QBHRq7agQzLR-xIPW8dcgH7Ni8pqYlLXeM8NjYFBqKOVThH1-vTf6wocCMsRb2BU8wUaSdewbcvQ7XITTh5SbgI9AnXWtGvj7-98YoHMvVLzWpe9xuIRMsUeIMQn8H6ZbtA")' }}
-          />
-        </div>
+      <nav className="hidden md:flex items-center gap-8">
+        <button onClick={onMyFleetClick} className="text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal">{t('my_fleet')}</button>
+        <button onClick={onManageListingsClick} className="text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal">{t('manage_listings')}</button>
+      </nav>
+
+      <div className="flex items-center gap-4">
+        <LanguageSwitcher />
+
+        <button
+          onClick={onToggleDarkMode}
+          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors"
+        >
+          <span className="material-symbols-outlined text-[20px]">{darkMode ? 'light_mode' : 'dark_mode'}</span>
+        </button>
+
+        <div className="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
+
+        {user ? (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onCreateListing}
+              className="hidden sm:flex bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-bold transition-all items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">add</span>
+              List Item
+            </button>
+            <div className="relative group">
+              <button className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden border-2 border-white dark:border-slate-600 shadow-sm flex items-center justify-center">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="font-bold text-slate-500 dark:text-slate-400">{user.email?.charAt(0).toUpperCase()}</span>
+                )}
+              </button>
+              {/* Dropdown Menu */}
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-surface-dark rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right">
+                <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                </div>
+                <div className="py-1">
+                  <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">Sign out</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onLoginClick}
+              className="text-slate-600 dark:text-slate-300 font-bold text-sm hover:text-slate-900 dark:hover:text-white transition-colors"
+            >
+              Log In
+            </button>
+            <button
+              onClick={onLoginClick}
+              className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-2 rounded-lg text-sm font-bold hover:shadow-lg hover:-translate-y-0.5 transition-all"
+            >
+              Sign Up
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

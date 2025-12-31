@@ -1,0 +1,159 @@
+# Heavy Hub Database Schema Proposal
+
+This document outlines a comprehensive relational database schema (e.g., PostgreSQL) for the Heavy Hub marketplace.
+
+## ER Diagram
+
+```mermaid
+erDiagram
+    Users ||--o{ Listings : owns
+    Users ||--o{ Bookings : makes
+    Users ||--o{ Reviews : writes
+    Users ||--o{ Messages : sends
+    Users ||--o{ Favorites : saves
+
+    Listings }|--|| Categories : belongs_to
+    Listings ||--o{ Bookings : reserved_in
+    Listings ||--o{ Reviews : receives
+    Listings ||--o{ Images : has
+    Listings ||--o{ Specs : has
+
+    Bookings ||--|| Transactions : generates
+
+    Users {
+        uuid id PK
+        string email
+        string password_hash
+        enum role "BUYER, SELLER, ADMIN"
+        string full_name
+        string phone
+        string avatar_url
+        boolean is_verified
+        timestamp created_at
+    }
+
+    Categories {
+        int id PK
+        string name_en
+        string name_ar
+        string name_ur
+        string slug
+        int parent_id FK
+    }
+
+    Listings {
+        uuid id PK
+        uuid user_id FK
+        int category_id FK
+        string title
+        text description
+        string make
+        string model
+        int year
+        
+        enum type "SALE, RENT"
+        decimal buy_price
+        decimal rent_daily
+        decimal rent_weekly
+        decimal rent_monthly
+
+        boolean is_available
+        jsonb location_data "lat, lng, address, city"
+        timestamp created_at
+    }
+
+    Specs {
+        uuid id PK
+        uuid listing_id FK
+        decimal hours
+        string serial_number
+        string operating_weight
+        string net_power
+        string max_dig_depth
+        string engine_model
+    }
+
+    Bookings {
+        uuid id PK
+        uuid listing_id FK
+        uuid user_id FK
+        date start_date
+        date end_date
+        decimal total_price
+        enum status "PENDING, CONFIRMED, COMPLETED, CANCELLED"
+        timestamp created_at
+    }
+```
+
+## detailed Table Definitions
+
+### 1. Users & Auth
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| `id` | UUID | Primary Key |
+| `email` | VARCHAR | Unique, indexed |
+| `role` | ENUM | 'buyer', 'dealer', 'admin' |
+| `is_verified` | BOOLEAN | KYC verification status |
+| `preferred_lang`| VARCHAR | Default app language (en/ar/ur) |
+
+### 2. Equipment Listings
+Store core info separate from technical specs for query performance.
+
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| `id` | UUID | Primary Key |
+| `seller_id` | UUID | FK to Users |
+| `category_id` | INT | FK to Categories |
+| `intent` | ENUM | 'sale', 'rent', 'both' |
+| `currency` | VARCHAR | Default 'SAR' |
+| `status` | ENUM | 'active', 'draft', 'sold', 'archived' |
+
+### 3. Equipment Specifications (1:1 with Listings)
+Vertical specific data. Using JSONB for `extra_specs` allows flexibility for different machine types without creating hundreds of columns.
+
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| `listing_id` | UUID | FK |
+| `engine_hours` | INT | |
+| `gross_weight_kg`| DECIMAL | |
+| `power_hp` | INT | |
+| `extra_specs` | JSONB | e.g. `{ "bucket_capacity": "1.2m3", "boom_length": "5m" }` |
+
+### 4. Bookings & Rentals
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| `id` | UUID | PK |
+| `renter_id` | UUID | FK to Users |
+| `listing_id` | UUID | FK to Listings |
+| `start_date` | DATE | |
+| `end_date` | DATE | |
+| `total_amount` | DECIMAL | |
+| `payment_status`| ENUM | 'unpaid', 'paid', 'refunded' |
+
+### 5. Media (Images/Documents)
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| `id` | UUID | PK |
+| `listing_id` | UUID | FK |
+| `url` | VARCHAR | Storage URL |
+| `type` | ENUM | 'image', 'video', 'pdf' |
+| `is_primary` | BOOLEAN | Thumbnail flag |
+
+### 6. Messages
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| `id` | UUID | PK |
+| `sender_id` | UUID | FK |
+| `receiver_id` | UUID | FK |
+| `listing_id` | UUID | Optional FK for context |
+| `content` | TEXT | |
+| `read_at` | TIMESTAMP | |
+
+## Localization Strategy
+For dynamic content (Categories, Tags), utilize separate columns (`name_en`, `name_ar`) or a JSONB column (`name: {"en": "Excavator", "ar": "حفارة"}`).
+For static UI, keep using the existing [json](file:///c:/Users/H/Desktop/Heavy-hub/Heavu-hub-sa/locales/en.json) files.
+
+## Indexes & Performance
+- Index on `location` (PostGIS) for geospatial search.
+- Index on `category_id` and `price` (composite) for fast filtering.
+- Index on `listing_id` in Media/Specs/Bookings tables.

@@ -41,7 +41,19 @@ export interface EquipmentListing {
   };
 }
 
-export type ViewState = 'search' | 'detail';
+export type ViewState = 'search' | 'detail' | 'login' | 'signup';
+
+export interface HeaderProps {
+  darkMode: boolean;
+  onToggleDarkMode: () => void;
+  onLogoClick: () => void;
+  onLoginClick?: () => void;
+  onLogout?: () => void;
+  onCreateListing?: () => void;
+  onMyFleetClick?: () => void;
+  onManageListingsClick?: () => void;
+  user?: any; // To be refined with User type
+}
 
 export interface SearchFilters {
   keywords: string;

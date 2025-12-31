@@ -1,0 +1,144 @@
+# Heavy Hub Firebase Schema & Security Rules
+
+This document outlines the NoSQL data structure for Google Cloud Firestore and the associated Security Rules.
+
+## Firestore Data Structure
+
+### 1. `users` (Collection)
+User profiles linked to Firebase Auth UID.
+- **Document ID**: `uid` (from Firebase Auth)
+- **Fields**:
+    - `email` (string)
+    - `role` (string): 'buyer', 'dealer', 'admin'
+    - `fullName` (string)
+    - `phone` (string)
+    - `avatarUrl` (string)
+    - `isVerified` (boolean)
+    - `createdAt` (timestamp)
+    - `fcmTokens` (array): For push notifications
+    - `favorites` (array): List of Listing IDs
+
+### 2. `listings` (Collection)
+Equipment listings.
+- **Document ID**: Auto-generated
+- **Fields**:
+    - `sellerId` (string): Reference to `users/{uid}`
+    - `title` (string)
+    - `description` (string)
+    - `category` (string): e.g. 'excavator', 'bulldozer'
+    - `type` (string): 'sale', 'rent'
+    - `make` (string)
+    - `model` (string)
+    - `year` (number)
+    - `price` (map):
+        - `buy` (number, nullable)
+        - `rentDaily` (number, nullable)
+        - `rentWeekly` (number, nullable)
+        - `rentMonthly` (number, nullable)
+        - `currency` (string): default 'SAR'
+    - `specs` (map): Flexible key-value pairs
+        - `hours` (number)
+        - `weight` (string)
+        - `power` (string)
+    - `location` (map):
+        - `geohash` (string)
+        - `lat` (number)
+        - `lng` (number)
+        - `address` (string)
+    - `images` (array of strings): Image URLs
+    - `status` (string): 'active', 'sold', 'hidden'
+    - `createdAt` (timestamp)
+
+### 3. `bookings` (Collection)
+Rental bookings or purchase requests.
+- **Document ID**: Auto-generated
+- **Fields**:
+    - `listingId` (string)
+    - `renterId` (string)
+    - `sellerId` (string)
+    - `startDate` (timestamp)
+    - `endDate` (timestamp)
+    - `totalPrice` (number)
+    - `status` (string): 'pending', 'approved', 'rejected', 'completed'
+    - `createdAt` (timestamp)
+
+### 4. `chats` (Collection)
+Private messaging channels.
+- **Document ID**: Auto-generated
+- **Fields**:
+    - `participants` (array): `[uid1, uid2]`
+    - `listingId` (string, optional)
+    - `lastMessage` (string)
+    - `lastMessageTime` (timestamp)
+    - `unreadCounts` (map): `{ uid1: 0, uid2: 1 }`
+
+#### Sub-collection: `messages`
+- **Document ID**: Auto-generated
+- **Fields**:
+    - `senderId` (string)
+    - `content` (string)
+    - `timestamp` (serverTimestamp)
+
+## Firestore Security Rules
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isSellerOrAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['dealer', 'admin'];
+    }
+
+    // 1. Users: Users can read profiles, but only edit their own
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId); // On sign up
+      allow update: if isOwner(userId);
+      allow delete: if false; // Only admin can delete via backend
+    }
+
+    // 2. Listings: Public read, Sellers/Admins create/update/delete
+    match /listings/{listingId} {
+      allow read: if true; // Public access
+      allow create: if isSignedIn() && isSellerOrAdmin();
+      allow update: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isSellerOrAdmin());
+      allow delete: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isSellerOrAdmin());
+    }
+
+    // 3. Bookings: Renters can create, Renters/Sellers can read/update their own
+    match /bookings/{bookingId} {
+      allow create: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.renterId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+      allow update: if isSignedIn() && (resource.data.renterId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+    }
+
+    // 4. Chats: Only participants can read/write
+    match /chats/{chatId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow create: if isSignedIn(); // Any auth user can start chat
+      allow update: if isSignedIn() && request.auth.uid in resource.data.participants;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      }
+    }
+  }
+}
+```
+
+## Indexes
+You will need to create composite indexes in Firebase Console for:
+1. `listings`: `category` + `price.buy` (Asc/Desc)
+2. `listings`: `location.geohash` + `status`
+3. `bookings`: `renterId` + `startDate`

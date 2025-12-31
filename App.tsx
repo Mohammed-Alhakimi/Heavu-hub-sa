@@ -1,15 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import Header from './components/Header';
 import SearchScreen from './components/SearchScreen';
 import DetailScreen from './components/DetailScreen';
-import { ViewState, EquipmentListing } from './types';
-import { MOCK_LISTINGS } from './constants';
+import LoginScreen from './components/Auth/LoginScreen';
+import SignUpScreen from './components/Auth/SignUpScreen';
+import { EquipmentListing, ViewState } from './types';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [view, setView] = useState<ViewState>('search');
   const [selectedListing, setSelectedListing] = useState<EquipmentListing | null>(null);
   const [darkMode, setDarkMode] = useState(false);
+  const { t } = useTranslation();
+  const { currentUser, logout } = useAuth();
 
   useEffect(() => {
     if (darkMode) {
@@ -22,46 +27,97 @@ const App: React.FC = () => {
   const handleListingClick = (listing: EquipmentListing) => {
     setSelectedListing(listing);
     setView('detail');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
   };
 
-  const handleGoBack = () => {
+  const handleBack = () => {
+    setSelectedListing(null);
     setView('search');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const handleLoginClick = () => {
+    setView('login');
+  };
+
+  const handleAuthSuccess = () => {
+    setView('search');
+  };
+
+  const handleCreateListingClick = () => {
+    if (!currentUser) {
+      setView('login');
+    } else {
+      // TODO: Navigate to create listing
+      alert("Create Listing feature coming soon!");
+    }
+  };
+
+  const handleProtectedAction = (actionName: string) => {
+    if (!currentUser) {
+      setView('login');
+    } else {
+      alert(`${actionName} feature coming soon!`);
+    }
+  };
+
+  // Render Auth Screens
+  if (view === 'login') {
+    return <LoginScreen onNavigateToSignUp={() => setView('signup')} onLoginSuccess={handleAuthSuccess} />;
+  }
+
+  if (view === 'signup') {
+    return <SignUpScreen onNavigateToLogin={() => setView('login')} onSignUpSuccess={handleAuthSuccess} />;
+  }
 
   return (
-    <div className="min-h-screen transition-colors duration-200">
-      <Header 
-        darkMode={darkMode} 
-        onToggleDarkMode={() => setDarkMode(!darkMode)} 
-        onLogoClick={handleGoBack}
+    <div className="min-h-screen bg-white dark:bg-black transition-colors duration-300 font-sans text-slate-900 dark:text-slate-100">
+      <Header
+        darkMode={darkMode}
+        onToggleDarkMode={() => setDarkMode(!darkMode)}
+        onLogoClick={() => setView('search')}
+        onLoginClick={handleLoginClick}
+        user={currentUser}
+        onLogout={logout}
+        onCreateListing={handleCreateListingClick}
+        onMyFleetClick={() => handleProtectedAction('My Fleet')}
+        onManageListingsClick={() => handleProtectedAction('Manage Listings')}
       />
-      
-      <main className="flex-1">
+
+      <main className="pt-[65px]">
         {view === 'search' && (
           <SearchScreen onListingClick={handleListingClick} />
         )}
-        
+
         {view === 'detail' && selectedListing && (
-          <DetailScreen 
-            listing={selectedListing} 
-            onBack={handleGoBack} 
-          />
+          <DetailScreen listing={selectedListing} onBack={handleBack} />
         )}
       </main>
 
-      <footer className="mt-20 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors">
-        <div className="max-w-[960px] mx-auto px-5 py-10 flex flex-col gap-6 text-center">
-          <div className="flex flex-wrap items-center justify-center gap-6 text-[#4e7397]">
-            <a className="text-base font-normal leading-normal min-w-[120px] hover:text-primary transition-colors" href="#">Privacy Policy</a>
-            <a className="text-base font-normal leading-normal min-w-[120px] hover:text-primary transition-colors" href="#">Terms of Service</a>
-            <a className="text-base font-normal leading-normal min-w-[120px] hover:text-primary transition-colors" href="#">Help Center</a>
+      {/* Footer */}
+      <footer className="bg-white dark:bg-surface-dark border-t border-slate-200 dark:border-slate-800 py-12 px-6">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-2">
+            <div className="bg-primary/10 p-2 rounded-xl">
+              <span className="material-symbols-outlined text-primary">construction</span>
+            </div>
+            <span className="font-black text-lg tracking-tight">Heavy Hub</span>
           </div>
-          <p className="text-[#4e7397] text-base font-normal leading-normal">© 2023 Heavy Hub Inc. All rights reserved.</p>
+          <div className="text-sm text-slate-500">
+            © 2024 Heavy Hub Inc. All rights reserved.
+          </div>
         </div>
       </footer>
     </div>
+  );
+};
+
+
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 

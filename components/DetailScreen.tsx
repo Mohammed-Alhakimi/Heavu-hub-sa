@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
 import { EquipmentListing } from '../types';
+import { useTranslation } from 'react-i18next';
+import { formatCurrency } from '../utils/currency';
 
 interface DetailScreenProps {
   listing: EquipmentListing;
@@ -8,19 +10,24 @@ interface DetailScreenProps {
 }
 
 const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
-  const [activeTab, setActiveTab] = useState('Machine Specs');
+  const { t, i18n } = useTranslation();
+  const [activeTab, setActiveTab] = useState('machine_specs');
   const [intent, setIntent] = useState<'rent' | 'buy'>(listing.forRent ? 'rent' : 'buy');
   const [mainImage, setMainImage] = useState(listing.images[0]);
+
+  // Update active tab when language changes if needed, or just rely on keys if possible. 
+  // Simplified for now: we will just use keys for rendering.
+  const tabs = ['machine_specs', 'condition_report', 'logistics_shipping'];
 
   return (
     <div className="max-w-[1280px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
       {/* Breadcrumbs */}
       <div className="flex flex-wrap gap-2 pb-6 items-center">
-        <button 
+        <button
           onClick={onBack}
           className="text-[#4e7397] text-sm font-medium leading-normal hover:underline"
         >
-          Home
+          {t('home')}
         </button>
         <span className="text-[#4e7397] text-sm font-medium leading-normal">/</span>
         <button className="text-[#4e7397] text-sm font-medium leading-normal hover:underline">{listing.category}s</button>
@@ -34,10 +41,10 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
           {/* Gallery Section */}
           <div className="flex flex-col gap-4">
             <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-gray-200 group shadow-lg">
-              <img 
-                src={mainImage} 
+              <img
+                src={mainImage}
                 alt={listing.name}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]" 
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
               />
               <div className="absolute bottom-4 right-4 flex gap-2">
                 <button className="bg-black/50 hover:bg-black/70 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
@@ -50,10 +57,10 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
                 </button>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-5 gap-3">
               {listing.images.map((img, idx) => (
-                <button 
+                <button
                   key={idx}
                   onClick={() => setMainImage(img)}
                   className={`aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all ${mainImage === img ? 'border-primary ring-2 ring-primary/20 scale-95' : 'border-transparent hover:opacity-80'}`}
@@ -106,64 +113,64 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
           <div className="flex flex-col gap-6">
             <div className="border-b border-slate-200 dark:border-slate-700">
               <nav className="-mb-px flex space-x-8">
-                {['Machine Specs', 'Condition Report', 'Logistics & Shipping'].map(tab => (
+                {tabs.map(tab => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`${
-                      activeTab === tab
-                        ? 'border-primary text-primary border-b-2'
-                        : 'border-transparent text-slate-500 dark:text-slate-400 hover:border-slate-300 hover:text-slate-700'
-                    } whitespace-nowrap py-4 px-1 text-sm font-semibold transition-all`}
+                    className={`${activeTab === tab
+                      ? 'border-primary text-primary border-b-2'
+                      : 'border-transparent text-slate-500 dark:text-slate-400 hover:border-slate-300 hover:text-slate-700'
+                      } whitespace-nowrap py-4 px-1 text-sm font-semibold transition-all`}
                   >
-                    {tab}
+                    {t(tab)}
                   </button>
                 ))}
               </nav>
             </div>
 
             {/* Specs Content */}
-            {activeTab === 'Machine Specs' && (
+            {activeTab === 'machine_specs' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 animate-fadeIn">
                 <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg">timer</span> Hours
+                    <span className="material-symbols-outlined text-lg">timer</span> {t('hours')}
                   </span>
                   <span className="font-semibold">{listing.hours ? `${listing.hours.toLocaleString()} hrs` : 'N/A'}</span>
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg">calendar_month</span> Year
+                    <span className="material-symbols-outlined text-lg">calendar_month</span> {t('year')}
                   </span>
                   <span className="font-semibold">{listing.year}</span>
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg">weight</span> Operating Weight
+                    <span className="material-symbols-outlined text-lg">weight</span> {t('operating_weight')}
                   </span>
                   <span className="font-semibold">{listing.weight || '48,281 lbs'}</span>
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg">speed</span> Net Power
+                    <span className="material-symbols-outlined text-lg">speed</span> {t('net_power')}
                   </span>
                   <span className="font-semibold">{listing.netPower || '146 hp'}</span>
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg">straighten</span> Max Dig Depth
+                    <span className="material-symbols-outlined text-lg">straighten</span> {t('max_dig_depth')}
                   </span>
                   <span className="font-semibold">{listing.maxDigDepth || '22.1 ft'}</span>
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg">settings</span> Engine Model
+                    <span className="material-symbols-outlined text-lg">settings</span> {t('engine_model')}
                   </span>
                   <span className="font-semibold">{listing.engineModel || 'Cat C4.4 ACERT'}</span>
                 </div>
               </div>
             )}
-            
+
+
             <div className="mt-4">
               <button className="text-primary font-bold text-sm flex items-center gap-1 hover:underline">
                 <span className="material-symbols-outlined text-lg">download</span> Download Full Spec Sheet
@@ -188,7 +195,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
               <div className="flex-1 w-full flex flex-col gap-3">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Delivery Zip Code</label>
                 <div className="flex gap-2">
-                  <input className="form-input flex-1 rounded-lg border-slate-300 dark:border-slate-600 bg-transparent text-sm focus:ring-primary focus:border-primary outline-none" placeholder="e.g. 75001" type="text"/>
+                  <input className="form-input flex-1 rounded-lg border-slate-300 dark:border-slate-600 bg-transparent text-sm focus:ring-primary focus:border-primary outline-none" placeholder="e.g. 75001" type="text" />
                   <button className="px-6 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white rounded-lg text-sm font-bold hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">Calculate</button>
                 </div>
                 <p className="text-xs text-slate-500">Estimates are provided by trusted haulers. Final price may vary.</p>
@@ -231,17 +238,17 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
             {/* Rent Card */}
             <div className="bg-white dark:bg-surface-dark rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors">
               <div className="grid grid-cols-2 bg-slate-100 dark:bg-slate-900 p-1.5 gap-1.5 m-2.5 rounded-xl">
-                <button 
+                <button
                   onClick={() => setIntent('rent')}
                   className={`py-2 text-center rounded-lg text-sm font-bold transition-all ${intent === 'rent' ? 'bg-white dark:bg-surface-dark text-primary shadow-md' : 'text-slate-500'}`}
                 >
-                  Rent
+                  {t('rent')}
                 </button>
-                <button 
+                <button
                   onClick={() => setIntent('buy')}
                   className={`py-2 text-center rounded-lg text-sm font-bold transition-all ${intent === 'buy' ? 'bg-white dark:bg-surface-dark text-primary shadow-md' : 'text-slate-500'}`}
                 >
-                  Buy
+                  {t('buy')}
                 </button>
               </div>
 
@@ -249,31 +256,31 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
                 <div className="p-6 pt-2 flex flex-col gap-6 animate-fadeIn">
                   <div className="grid grid-cols-3 gap-2.5 text-center">
                     <div className="flex flex-col p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest">Daily</span>
-                      <span className="text-xl font-black text-slate-900 dark:text-white">${listing.rentDaily}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest">{t('daily')}</span>
+                      <span className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(listing.rentDaily, i18n.language)}</span>
                     </div>
                     <div className="flex flex-col p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest">Weekly</span>
-                      <span className="text-xl font-black text-slate-900 dark:text-white">${listing.rentWeekly.toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest">{t('weekly')}</span>
+                      <span className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(listing.rentWeekly, i18n.language)}</span>
                     </div>
                     <div className="flex flex-col p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest">Monthly</span>
-                      <span className="text-xl font-black text-slate-900 dark:text-white">${listing.rentMonthly.toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest">{t('monthly')}</span>
+                      <span className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(listing.rentMonthly, i18n.language)}</span>
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Start Date</label>
-                        <input className="w-full rounded-lg border-slate-200 dark:border-slate-600 bg-transparent text-sm py-2 pl-3 focus:ring-primary focus:border-primary outline-none" type="date" defaultValue="2023-10-15"/>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('start_date')}</label>
+                        <input className="w-full rounded-lg border-slate-200 dark:border-slate-600 bg-transparent text-sm py-2 pl-3 focus:ring-primary focus:border-primary outline-none" type="date" defaultValue="2023-10-15" />
                       </div>
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">End Date</label>
-                        <input className="w-full rounded-lg border-slate-200 dark:border-slate-600 bg-transparent text-sm py-2 pl-3 focus:ring-primary focus:border-primary outline-none" type="date" defaultValue="2023-10-22"/>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('end_date')}</label>
+                        <input className="w-full rounded-lg border-slate-200 dark:border-slate-600 bg-transparent text-sm py-2 pl-3 focus:ring-primary focus:border-primary outline-none" type="date" defaultValue="2023-10-22" />
                       </div>
                     </div>
-                    
+
                     {/* Calendar visualizer placeholder */}
                     <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
                       <div className="flex items-center justify-between mb-3">
@@ -284,7 +291,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
                         </div>
                       </div>
                       <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold">
-                        {['S','M','T','W','T','F','S'].map(d => <span key={d} className="text-slate-400 mb-1">{d}</span>)}
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => <span key={d} className="text-slate-400 mb-1">{d}</span>)}
                         {[...Array(31)].map((_, i) => {
                           const day = i + 1;
                           let style = "py-1.5 rounded-md cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 ";
@@ -300,14 +307,14 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
 
                   <div className="flex flex-col gap-3 pt-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-slate-500">Estimated Total</span>
-                      <span className="font-black text-slate-900 dark:text-white text-2xl">$2,150.00</span>
+                      <span className="text-sm font-medium text-slate-500">{t('estimated_total')}</span>
+                      <span className="font-black text-slate-900 dark:text-white text-2xl">{formatCurrency(2150, i18n.language)}</span>
                     </div>
                     <button className="w-full bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-xl shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2 group">
-                      Request Booking
-                      <span className="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                      {t('request_booking')}
+                      <span className={`material-symbols-outlined text-[20px] ${i18n.dir() === 'rtl' ? 'rotate-180' : ''} group-hover:translate-x-1 transition-transform`}>arrow_forward</span>
                     </button>
-                    <p className="text-center text-xs text-slate-400">You won't be charged yet.</p>
+                    <p className="text-center text-xs text-slate-400">{t('no_charge_yet')}</p>
                   </div>
                 </div>
               ) : (
@@ -319,8 +326,8 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-4xl font-black text-slate-900 dark:text-white">${listing.buyPrice.toLocaleString()}</span>
-                    <a className="text-xs text-primary font-bold hover:underline" href="#">Est. $1,450/mo with financing</a>
+                    <span className="text-4xl font-black text-slate-900 dark:text-white">{formatCurrency(listing.buyPrice, i18n.language)}</span>
+                    <a className="text-xs text-primary font-bold hover:underline" href="#">{t('est_financing')}</a>
                   </div>
                   <div className="flex flex-col gap-3">
                     <button className="w-full bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-primary dark:hover:border-primary hover:text-primary transition-all font-black py-3.5 rounded-xl">
@@ -339,13 +346,13 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
             <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800 flex items-start gap-3">
               <span className="material-symbols-outlined text-blue-500">info</span>
               <p className="text-xs text-blue-800 dark:text-blue-200 font-medium leading-relaxed">
-                Heavy Hub Protection covers your purchase against material misrepresentation. Rent with confidence.
+                {t('protection_stub')}
               </p>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

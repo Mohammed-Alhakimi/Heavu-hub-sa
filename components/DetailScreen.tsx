@@ -15,10 +15,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState('machine_specs');
   const [intent, setIntent] = useState<'rent' | 'buy'>(listing.forRent ? 'rent' : 'buy');
-  const images = listing.images || [];
-  const [mainImage, setMainImage] = useState(images[0] || 'https://via.placeholder.com/800x600?text=No+Image');
-  const listingName = listing.name || listing.title || 'Unknown Equipment';
-  const displayLocation = typeof listing.location === 'object' ? listing.location.address : listing.location;
+  const [mainImage, setMainImage] = useState(listing.images[0]);
 
   // Update active tab when language changes if needed, or just rely on keys if possible. 
   // Simplified for now: we will just use keys for rendering.
@@ -37,7 +34,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
         <span className="text-[#4e7397] text-sm font-medium leading-normal">/</span>
         <button className="text-[#4e7397] text-sm font-medium leading-normal hover:underline">{listing.category}s</button>
         <span className="text-[#4e7397] text-sm font-medium leading-normal">/</span>
-        <span className="text-slate-900 dark:text-white text-sm font-medium leading-normal">{listingName}</span>
+        <span className="text-slate-900 dark:text-white text-sm font-medium leading-normal">{listing.name}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -48,7 +45,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
             <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-gray-200 group shadow-lg">
               <img
                 src={mainImage}
-                alt={listingName}
+                alt={listing.name}
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
               />
               <div className="absolute bottom-4 right-4 flex gap-2">
@@ -64,7 +61,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
             </div>
 
             <div className="grid grid-cols-5 gap-3">
-              {images.map((img, idx) => (
+              {listing.images.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setMainImage(img)}
@@ -97,10 +94,10 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
                     </span>
                   )}
                 </div>
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{listingName}</h1>
+                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{listing.name}</h1>
                 <p className="text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
                   <span className="material-symbols-outlined text-[18px]">location_on</span>
-                  {displayLocation} • SN: {listing.serialNumber || 'N/A'}
+                  {listing.location} • SN: {listing.serialNumber}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -143,7 +140,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
                   <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
                     <span className="material-symbols-outlined text-lg">timer</span> {t('hours')}
                   </span>
-                  <span className="font-semibold">{(listing.hours || listing.specs?.hours) ? `${(listing.hours || listing.specs?.hours).toLocaleString()} hrs` : 'N/A'}</span>
+                  <span className="font-semibold">{listing.hours ? `${listing.hours.toLocaleString()} hrs` : 'N/A'}</span>
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
@@ -173,7 +170,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
                   <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
                     <span className="material-symbols-outlined text-lg">settings</span> {t('engine_model')}
                   </span>
-                  <span className="font-semibold">{listing.engineModel || listing.specs?.power || 'N/A'}</span>
+                  <span className="font-semibold">{listing.engineModel || 'Cat C4.4 ACERT'}</span>
                 </div>
               </div>
             )}
@@ -196,7 +193,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
                 <div className="relative h-40 w-full rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                   <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVVVY7LXiDk2f16p1R7nUC_I2oGpjKSEkCqER6Q7jNhbrY1Lfx8tuoL0Llz1nfobuII19jy2TTasrXArrm7wD-MCKPaMzFSzMlUN2m8Ysa-fRxUgVBsBDFmeKu6g18gFSelGGRgREGlya_HpE48Whr0sLJto4M29Z_ziptjwzuYEsC8_kDBrfD_QDX6GqfmOWPYmtBQp0rwJndQkjrfqfuK33JphA2KdeCGkzW-KMAkCEA2KDY1LgFvPuHR68AbQGRAZ-Sskhs4vqG" className="w-full h-full object-cover opacity-60 grayscale dark:invert dark:opacity-40" />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="bg-white/90 dark:bg-black/70 px-4 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm border border-slate-200 dark:border-slate-700">Origin: {displayLocation}</span>
+                    <span className="bg-white/90 dark:bg-black/70 px-4 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm border border-slate-200 dark:border-slate-700">Origin: {listing.location}</span>
                   </div>
                 </div>
               </div>
@@ -216,31 +213,23 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
             <h3 className="text-lg font-bold mb-4">About the Seller</h3>
             <div className="flex items-start gap-4">
               <div className="size-16 rounded-full bg-slate-200 overflow-hidden shrink-0 border-2 border-slate-100 dark:border-slate-800 shadow-sm">
-                {listing.seller?.avatar ? (
-                  <img src={listing.seller.avatar} alt={listing.seller.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold">
-                    {listing.seller?.name?.charAt(0) || 'S'}
-                  </div>
-                )}
+                <img src={listing.seller.avatar} alt={listing.seller.name} className="w-full h-full object-cover" />
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-lg">{listing.seller?.name || 'Private Seller'}</span>
-                  {listing.seller && <span className="material-symbols-outlined text-blue-500 text-[18px]" title="Verified Dealer">verified</span>}
+                  <span className="font-bold text-lg">{listing.seller.name}</span>
+                  <span className="material-symbols-outlined text-blue-500 text-[18px]" title="Verified Dealer">verified</span>
                 </div>
-                {listing.seller && (
-                  <div className="flex items-center gap-1 text-sm text-yellow-500 my-1">
-                    {[...Array(5)].map((_, i) => (
-                      <span key={i} className={`material-symbols-outlined text-[16px] ${i < Math.floor(listing.seller!.rating) ? 'fill-current' : ''}`}>
-                        {i < Math.floor(listing.seller!.rating) ? 'star' : (i < listing.seller!.rating ? 'star_half' : 'star')}
-                      </span>
-                    ))}
-                    <span className="text-slate-500 dark:text-slate-400 ml-2 text-xs font-medium">({listing.seller!.reviewsCount} reviews)</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-1 text-sm text-yellow-500 my-1">
+                  {[...Array(5)].map((_, i) => (
+                    <span key={i} className={`material-symbols-outlined text-[16px] ${i < Math.floor(listing.seller.rating) ? 'fill-current' : ''}`}>
+                      {i < Math.floor(listing.seller.rating) ? 'star' : (i < listing.seller.rating ? 'star_half' : 'star')}
+                    </span>
+                  ))}
+                  <span className="text-slate-500 dark:text-slate-400 ml-2 text-xs font-medium">({listing.seller.reviewsCount} reviews)</span>
+                </div>
                 <p className="text-sm text-slate-600 dark:text-slate-300 max-w-xl leading-relaxed">
-                  {listing.seller?.description || 'Contact the seller for more information about this listing.'}
+                  {listing.seller.description}
                 </p>
                 <button className="mt-3 text-primary text-sm font-bold self-start hover:underline">View Dealer Profile</button>
               </div>
@@ -273,21 +262,15 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
                   <div className="grid grid-cols-3 gap-2.5 text-center">
                     <div className="flex flex-col p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest">{t('daily')}</span>
-                      <span className="text-xl font-black text-slate-900 dark:text-white">
-                        {formatCurrency(listing.rentDaily || listing.price?.rentDaily || 0, i18n.language)}
-                      </span>
+                      <span className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(listing.rentDaily, i18n.language)}</span>
                     </div>
                     <div className="flex flex-col p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest">{t('weekly')}</span>
-                      <span className="text-xl font-black text-slate-900 dark:text-white">
-                        {formatCurrency(listing.rentWeekly || listing.price?.rentWeekly || 0, i18n.language)}
-                      </span>
+                      <span className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(listing.rentWeekly, i18n.language)}</span>
                     </div>
                     <div className="flex flex-col p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest">{t('monthly')}</span>
-                      <span className="text-xl font-black text-slate-900 dark:text-white">
-                        {formatCurrency(listing.rentMonthly || listing.price?.rentMonthly || 0, i18n.language)}
-                      </span>
+                      <span className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(listing.rentMonthly, i18n.language)}</span>
                     </div>
                   </div>
 
@@ -351,9 +334,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-4xl font-black text-slate-900 dark:text-white">
-                      {formatCurrency(listing.buyPrice || listing.price?.buy || 0, i18n.language)}
-                    </span>
+                    <span className="text-4xl font-black text-slate-900 dark:text-white">{formatCurrency(listing.buyPrice, i18n.language)}</span>
                     <a className="text-xs text-primary font-bold hover:underline" href="#">{t('est_financing')}</a>
                   </div>
                   <div className="flex flex-col gap-3">

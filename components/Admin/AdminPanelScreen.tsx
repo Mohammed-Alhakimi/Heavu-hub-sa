@@ -232,7 +232,7 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
                                     {listing.images && listing.images.length > 0 ? (
                                         <img
                                             src={listing.images[0]}
-                                            alt={listing.name || listing.title}
+                                            alt={listing.title}
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
@@ -247,7 +247,7 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
                                     <div className="flex items-start justify-between gap-4">
                                         <div>
                                             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                                                {listing.name || listing.title}
+                                                {listing.title}
                                             </h3>
                                             <p className="text-sm text-slate-500 dark:text-slate-400">
                                                 {listing.year} {listing.make} {listing.model} • {listing.category}

@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isSellerOrAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['dealer', 'admin'];
+    }
+
+    // 1. Users: Users can read profiles, but only edit their own
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId); // On sign up
+      allow update: if isOwner(userId);
+      allow delete: if false; // Only admin can delete via backend
+    }
+
+    // 2. Listings: Public read, Sellers/Admins create/update/delete
+    match /listings/{listingId} {
+      allow read: if true; // Public access
+      allow create: if isSignedIn() && isSellerOrAdmin();
+      allow update: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isSellerOrAdmin());
+      allow delete: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isSellerOrAdmin());
+    }
+
+    // 3. Bookings: Renters can create, Renters/Sellers can read/update their own
+    match /bookings/{bookingId} {
+      allow create: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.renterId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+      allow update: if isSignedIn() && (resource.data.renterId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+    }
+
+    // 4. Chats: Only participants can read/write
+    match /chats/{chatId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow create: if isSignedIn(); // Any auth user can start chat
+      allow update: if isSignedIn() && request.auth.uid in resource.data.participants;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      }
+    }
+  }
+}

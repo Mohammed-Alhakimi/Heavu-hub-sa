@@ -6,6 +6,8 @@ import SearchScreen from './components/SearchScreen';
 import DetailScreen from './components/DetailScreen';
 import LoginScreen from './components/Auth/LoginScreen';
 import SignUpScreen from './components/Auth/SignUpScreen';
+import CreateListingScreen from './components/Listings/CreateListingScreen';
+import MyFleetScreen from './components/Listings/MyFleetScreen';
 import { EquipmentListing, ViewState } from './types';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -47,14 +49,15 @@ const AppContent: React.FC = () => {
     if (!currentUser) {
       setView('login');
     } else {
-      // TODO: Navigate to create listing
-      alert("Create Listing feature coming soon!");
+      setView('create-listing');
     }
   };
 
   const handleProtectedAction = (actionName: string) => {
     if (!currentUser) {
       setView('login');
+    } else if (actionName === 'My Fleet') {
+      setView('my-fleet');
     } else {
       alert(`${actionName} feature coming soon!`);
     }
@@ -67,6 +70,14 @@ const AppContent: React.FC = () => {
 
   if (view === 'signup') {
     return <SignUpScreen onNavigateToLogin={() => setView('login')} onSignUpSuccess={handleAuthSuccess} />;
+  }
+
+  if (view === 'create-listing') {
+    return <CreateListingScreen onSuccess={() => setView('my-fleet')} onCancel={() => setView('search')} />;
+  }
+
+  if (view === 'my-fleet') {
+    return <MyFleetScreen onBack={() => setView('search')} onCreateListing={() => setView('create-listing')} />;
   }
 
   return (

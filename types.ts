@@ -41,7 +41,7 @@ export interface EquipmentListing {
   };
 }
 
-export type ViewState = 'search' | 'detail' | 'login' | 'signup';
+export type ViewState = 'search' | 'detail' | 'login' | 'signup' | 'create-listing' | 'my-fleet';
 
 export interface HeaderProps {
   darkMode: boolean;

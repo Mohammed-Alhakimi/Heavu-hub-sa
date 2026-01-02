@@ -29,6 +29,11 @@ service cloud.firestore {
       allow create: if isOwner(userId); // On sign up
       allow update: if isOwner(userId);
       allow delete: if false; // Only admin can delete via backend
+      
+      // User Favorites (Subcollection)
+      match /favorites/{favoriteId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // 2. Listings: 
@@ -62,6 +67,13 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow read: if isSignedIn() && (resource.data.renterId == request.auth.uid || resource.data.sellerId == request.auth.uid);
       allow update: if isSignedIn() && (resource.data.renterId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+    }
+
+    // 4. Offers: Authenticated users can create, Buyers/Sellers can read/update
+    match /offers/{offerId} {
+      allow create: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+      allow update: if isSignedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
     }
 
     // 4. Chats: Only participants can read/write

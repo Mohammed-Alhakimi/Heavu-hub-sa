@@ -7,9 +7,11 @@ import { formatCurrency } from '../utils/currency';
 interface DetailScreenProps {
   listing: EquipmentListing;
   onBack: () => void;
+  isAuthenticated?: boolean;
+  onRestrictedAction?: () => void;
 }
 
-const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
+const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenticated = false, onRestrictedAction = () => { } }) => {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState('machine_specs');
   const [intent, setIntent] = useState<'rent' | 'buy'>(listing.forRent ? 'rent' : 'buy');
@@ -102,7 +104,10 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
                 <button className="flex items-center justify-center size-10 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                   <span className="material-symbols-outlined text-xl">share</span>
                 </button>
-                <button className="flex items-center justify-center size-10 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                <button
+                  onClick={() => !isAuthenticated && onRestrictedAction()}
+                  className="flex items-center justify-center size-10 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
                   <span className="material-symbols-outlined text-xl">favorite</span>
                 </button>
               </div>
@@ -310,7 +315,10 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
                       <span className="text-sm font-medium text-slate-500">{t('estimated_total')}</span>
                       <span className="font-black text-slate-900 dark:text-white text-2xl">{formatCurrency(2150, i18n.language)}</span>
                     </div>
-                    <button className="w-full bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-xl shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2 group">
+                    <button
+                      onClick={() => !isAuthenticated && onRestrictedAction()}
+                      className="w-full bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-xl shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2 group"
+                    >
                       {t('request_booking')}
                       <span className={`material-symbols-outlined text-[20px] ${i18n.dir() === 'rtl' ? 'rotate-180' : ''} group-hover:translate-x-1 transition-transform`}>arrow_forward</span>
                     </button>
@@ -330,10 +338,16 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack }) => {
                     <a className="text-xs text-primary font-bold hover:underline" href="#">{t('est_financing')}</a>
                   </div>
                   <div className="flex flex-col gap-3">
-                    <button className="w-full bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-primary dark:hover:border-primary hover:text-primary transition-all font-black py-3.5 rounded-xl">
+                    <button
+                      onClick={() => !isAuthenticated && onRestrictedAction()}
+                      className="w-full bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-primary dark:hover:border-primary hover:text-primary transition-all font-black py-3.5 rounded-xl"
+                    >
                       Make an Offer
                     </button>
-                    <button className="w-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-sm font-bold transition-colors flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => !isAuthenticated && onRestrictedAction()}
+                      className="w-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                    >
                       <span className="material-symbols-outlined text-[18px]">chat</span>
                       Message Seller
                     </button>

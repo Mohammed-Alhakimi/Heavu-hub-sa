@@ -5,6 +5,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { EquipmentCategory } from '../../types';
+import { createListing } from '../../services/listings';
 
 interface CreateListingScreenProps {
     onSuccess: () => void;
@@ -101,16 +102,39 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
             // Upload images first
             const imageUrls = await uploadImages();
 
-            // Create listing document
-            const listingData = {
+            // Create listing using service
+            await createListing({
                 sellerId: currentUser.uid,
-                title,
+                // Map to flat structure for compatibility
+                name: title,
+                title, // Keep original
                 description,
                 category,
-                type: listingType,
+                // Flatten IDs
                 make,
                 model,
                 year,
+                serialNumber: 'N/A', // Default or add field
+
+                // Flatten Price
+                buyPrice: buyPrice ? parseFloat(buyPrice) : 0,
+                rentDaily: rentDaily ? parseFloat(rentDaily) : 0,
+                rentWeekly: rentWeekly ? parseFloat(rentWeekly) : 0,
+                rentMonthly: rentMonthly ? parseFloat(rentMonthly) : 0,
+
+                // Flatten Specs
+                hours: hours ? parseInt(hours) : 0,
+                weight: weight || undefined,
+                netPower: power || undefined,
+
+                // Location
+                location: address, // Map usage to string address for main view
+
+                // Boolean flags (derive from listingType)
+                forSale: listingType === 'sale' || listingType === 'both',
+                forRent: listingType === 'rent' || listingType === 'both',
+                type: listingType,
+
                 price: {
                     buy: buyPrice ? parseFloat(buyPrice) : null,
                     rentDaily: rentDaily ? parseFloat(rentDaily) : null,
@@ -123,18 +147,10 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                     weight: weight || null,
                     power: power || null
                 },
-                location: {
-                    address,
-                    lat: null,
-                    lng: null,
-                    geohash: null
-                },
                 images: imageUrls,
-                status: 'pending', // Listings require admin approval before going live
-                createdAt: serverTimestamp()
-            };
+                // Status and timestamps are handled by the service
+            } as any);
 
-            await addDoc(collection(db, 'listings'), listingData);
             onSuccess();
         } catch (err: any) {
             console.error('Error creating listing:', err);

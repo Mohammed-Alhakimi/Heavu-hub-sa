@@ -108,11 +108,20 @@ const AppContent: React.FC = () => {
 
       <main className="pt-[65px]">
         {view === 'search' && (
-          <SearchScreen onListingClick={handleListingClick} />
+          <SearchScreen
+            onListingClick={handleListingClick}
+            isAuthenticated={!!currentUser}
+            onRestrictedAction={() => setView('login')}
+          />
         )}
 
         {view === 'detail' && selectedListing && (
-          <DetailScreen listing={selectedListing} onBack={handleBack} />
+          <DetailScreen
+            listing={selectedListing}
+            onBack={handleBack}
+            isAuthenticated={!!currentUser}
+            onRestrictedAction={() => setView('login')}
+          />
         )}
       </main>
 

@@ -15,7 +15,7 @@ export interface EquipmentListing {
   make: string;
   model: string;
   category: EquipmentCategory;
-  location: string;
+  location: string | any;
   serialNumber: string;
   hours?: number;
   weight?: string;
@@ -32,13 +32,22 @@ export interface EquipmentListing {
   isAvailable: boolean;
   forSale: boolean;
   forRent: boolean;
-  seller: {
+  seller?: {
     name: string;
     rating: number;
     reviewsCount: number;
     description: string;
     avatar: string;
   };
+  sellerId?: string;
+  status: 'draft' | 'pending' | 'active' | 'rejected';
+  approvedAt?: any; // Firestore Timestamp
+  createdAt?: any; // Firestore Timestamp
+
+  // Compat fields between prototype schemas
+  title?: string;
+  price?: any;
+  specs?: any;
 }
 
 export type ViewState = 'search' | 'detail' | 'login' | 'signup' | 'create-listing' | 'my-fleet' | 'admin-panel';

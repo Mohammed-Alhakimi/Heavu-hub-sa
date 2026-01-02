@@ -212,15 +212,9 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
           <div className="border-t border-slate-200 dark:border-slate-700 pt-8">
             <h3 className="text-lg font-bold mb-4">About the Seller</h3>
             <div className="flex items-start gap-4">
-              {listing?.seller && (
-                <div className="size-16 rounded-full bg-slate-200 overflow-hidden shrink-0 border-2 border-slate-100 dark:border-slate-800 shadow-sm">
-                  <img
-                    src={listing.seller.avatar}
-                    alt={listing.seller.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
+              <div className="size-16 rounded-full bg-slate-200 overflow-hidden shrink-0 border-2 border-slate-100 dark:border-slate-800 shadow-sm">
+                <img src={listing.seller.avatar} alt={listing.seller.name} className="w-full h-full object-cover" />
+              </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-lg">{listing.seller.name}</span>

@@ -223,9 +223,14 @@ Click on any equipment card to view detailed information:
    - Maximum 10 images per listing
    - Remove images by hovering and clicking the X
 
-7. **Submit**
-   - Click **"Publish Listing"** to make it live
-   - Or **"Cancel"** to discard changes
+7. **Submit for Approval**
+   - Click **"Publish Listing"** to submit your equipment
+   - Listings enter **"Pending"** status by default
+   - Our team reviews all listings to ensure quality and authenticity
+   - Once approved, the status changes to **"Active"** and becomes visible to all users
+
+> [!IMPORTANT]
+> **Manual Approval:** To maintain platform quality, all new listings require manual approval before they appear in public search results. This process typically takes less than 24 hours.
 
 ---
 
@@ -243,12 +248,11 @@ The My Fleet screen displays all your listings with:
 
 ### Listing Actions
 
-#### Change Status
-
-Use the dropdown to update listing status:
-- **Active** - Visible to all users
-- **Hidden** - Not visible in search results
-- **Sold** - Marked as sold
+Use the fleet dashboard to monitor your listing progress:
+- **Pending** 🟡 - Waiting for admin review (not visible to public)
+- **Active** 🟢 - Approved and live in search results
+- **Rejected** 🔴 - Did not meet requirements (see notes/contact support)
+- **Draft** ⚪ - Saved but not yet submitted for review
 
 #### Delete Listing
 

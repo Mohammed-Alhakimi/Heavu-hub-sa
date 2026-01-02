@@ -4,6 +4,7 @@ import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/fire
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
+import { updateListingStatus, deleteListing } from '../../services/listings';
 
 interface Listing {
     id: string;
@@ -79,7 +80,7 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
     const handleApprove = async (listingId: string) => {
         try {
             setActionLoading(listingId);
-            await updateDoc(doc(db, 'listings', listingId), { status: 'active' });
+            await updateListingStatus(listingId, 'active');
             setListings(prev => prev.map(l => l.id === listingId ? { ...l, status: 'active' as const } : l));
         } catch (err) {
             console.error('Error approving listing:', err);
@@ -92,11 +93,28 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
     const handleReject = async (listingId: string) => {
         try {
             setActionLoading(listingId);
-            await updateDoc(doc(db, 'listings', listingId), { status: 'rejected' });
+            await updateListingStatus(listingId, 'rejected');
             setListings(prev => prev.map(l => l.id === listingId ? { ...l, status: 'rejected' as const } : l));
         } catch (err) {
             console.error('Error rejecting listing:', err);
             setError('Failed to reject listing');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleDelete = async (listingId: string) => {
+        if (!window.confirm('Are you sure you want to permanently delete this listing? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            setActionLoading(listingId);
+            await deleteListing(listingId);
+            setListings(prev => prev.filter(l => l.id !== listingId));
+        } catch (err) {
+            console.error('Error deleting listing:', err);
+            setError('Failed to delete listing');
         } finally {
             setActionLoading(null);
         }
@@ -214,7 +232,7 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
                                     {listing.images && listing.images.length > 0 ? (
                                         <img
                                             src={listing.images[0]}
-                                            alt={listing.title}
+                                            alt={listing.name || listing.title}
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
@@ -229,7 +247,7 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
                                     <div className="flex items-start justify-between gap-4">
                                         <div>
                                             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                                                {listing.title}
+                                                {listing.name || listing.title}
                                             </h3>
                                             <p className="text-sm text-slate-500 dark:text-slate-400">
                                                 {listing.year} {listing.make} {listing.model} • {listing.category}
@@ -264,6 +282,17 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
                                         <span className="text-xs text-slate-400">Seller ID: {listing.sellerId.slice(0, 8)}...</span>
 
                                         <div className="ml-auto flex items-center gap-2">
+                                            <button
+                                                onClick={() => handleDelete(listing.id)}
+                                                disabled={actionLoading === listing.id}
+                                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                                title="Delete Listing"
+                                            >
+                                                <span className="material-symbols-outlined text-[20px]">delete</span>
+                                            </button>
+
+                                            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
                                             {listing.status === 'pending' && (
                                                 <>
                                                     <button
@@ -295,10 +324,19 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
                                                 </button>
                                             )}
                                             {listing.status === 'active' && (
-                                                <span className="text-sm text-green-600 flex items-center gap-1">
-                                                    <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                                                    Live
-                                                </span>
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => handleReject(listing.id)}
+                                                        disabled={actionLoading === listing.id}
+                                                        className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                                                    >
+                                                        Hide
+                                                    </button>
+                                                    <span className="text-sm text-green-600 flex items-center gap-1">
+                                                        <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                                                        Live
+                                                    </span>
+                                                </div>
                                             )}
                                         </div>
                                     </div>

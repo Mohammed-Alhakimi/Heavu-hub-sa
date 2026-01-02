@@ -10,7 +10,10 @@ import {
     startAfter,
     DocumentData,
     QueryDocumentSnapshot,
-    Timestamp
+    Timestamp,
+    doc,
+    updateDoc,
+    deleteDoc
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { EquipmentListing } from '../types';
@@ -102,6 +105,39 @@ export const getPendingListings = async () => {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
         console.error('Error fetching pending listings:', error);
+        throw error;
+    }
+};
+
+/**
+ * Updates a listing's status (Admin only)
+ */
+export const updateListingStatus = async (listingId: string, status: EquipmentListing['status']) => {
+    try {
+        const listingRef = doc(db, LISTINGS_COLLECTION, listingId);
+        const updateData: any = { status };
+
+        // If approving, set approvedAt
+        if (status === 'active') {
+            updateData.approvedAt = serverTimestamp();
+        }
+
+        await updateDoc(listingRef, updateData);
+    } catch (error) {
+        console.error('Error updating listing status:', error);
+        throw error;
+    }
+};
+
+/**
+ * Permanently deletes a listing (Admin only)
+ */
+export const deleteListing = async (listingId: string) => {
+    try {
+        const listingRef = doc(db, LISTINGS_COLLECTION, listingId);
+        await deleteDoc(listingRef);
+    } catch (error) {
+        console.error('Error deleting listing:', error);
         throw error;
     }
 };

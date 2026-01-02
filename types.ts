@@ -41,7 +41,7 @@ export interface EquipmentListing {
   };
 }
 
-export type ViewState = 'search' | 'detail' | 'login' | 'signup' | 'create-listing' | 'my-fleet';
+export type ViewState = 'search' | 'detail' | 'login' | 'signup' | 'create-listing' | 'my-fleet' | 'admin-panel';
 
 export interface HeaderProps {
   darkMode: boolean;
@@ -51,8 +51,9 @@ export interface HeaderProps {
   onLogout?: () => void;
   onCreateListing?: () => void;
   onMyFleetClick?: () => void;
-  onManageListingsClick?: () => void;
-  user?: any; // To be refined with User type
+  onAdminPanelClick?: () => void;
+  user?: any;
+  userRole?: 'buyer' | 'dealer' | 'admin' | null;
 }
 
 export interface SearchFilters {

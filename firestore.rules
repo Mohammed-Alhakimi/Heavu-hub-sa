@@ -11,8 +11,16 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
     
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && getUserRole() == 'admin';
+    }
+    
     function isSellerOrAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['dealer', 'admin'];
+      return isSignedIn() && getUserRole() in ['dealer', 'admin'];
     }
 
     // 1. Users: Users can read profiles, but only edit their own
@@ -23,12 +31,30 @@ service cloud.firestore {
       allow delete: if false; // Only admin can delete via backend
     }
 
-    // 2. Listings: Public read, Sellers/Admins create/update/delete
+    // 2. Listings: 
+    // - Public can only read ACTIVE listings
+    // - Admin can read ALL listings (for approval panel)
+    // - Sellers create with 'pending' status
+    // - Only admin can change status field
     match /listings/{listingId} {
-      allow read: if true; // Public access
+      // Public reads only active listings, admin can read all
+      allow read: if resource.data.status == 'active' || isAdmin() || (isSignedIn() && resource.data.sellerId == request.auth.uid);
+      
+      // Sellers/admins can create (new listings are pending)
       allow create: if isSignedIn() && isSellerOrAdmin();
-      allow update: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isSellerOrAdmin());
-      allow delete: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isSellerOrAdmin());
+      
+      // Updates: owner can update their own (except status), admin can update anything
+      allow update: if isSignedIn() && (
+        // Admin can update anything including status
+        isAdmin() ||
+        // Owner can update but NOT change status (unless it's their own listing going hidden/active)
+        (resource.data.sellerId == request.auth.uid && 
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
+           request.resource.data.status in ['hidden', 'active'] && resource.data.status in ['active', 'hidden']))
+      );
+      
+      // Delete: owner or admin
+      allow delete: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isAdmin());
     }
 
     // 3. Bookings: Renters can create, Renters/Sellers can read/update their own

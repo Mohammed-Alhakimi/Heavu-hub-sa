@@ -12,10 +12,14 @@ const Header: React.FC<HeaderProps> = ({
   onLogout,
   onCreateListing,
   onMyFleetClick,
-  onManageListingsClick,
-  user
+  onAdminPanelClick,
+  user,
+  userRole
 }) => {
   const { t } = useTranslation();
+
+  // Check if user can create listings (dealer or admin)
+  const canCreateListing = userRole === 'dealer' || userRole === 'admin';
 
   return (
     <header className="fixed top-0 left-0 right-0 h-[65px] bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 z-50 flex items-center px-6 lg:px-10 justify-between transition-colors">
@@ -28,11 +32,6 @@ const Header: React.FC<HeaderProps> = ({
         </div>
         <h2 className="text-xl font-bold leading-tight tracking-[-0.015em]">{t('app_title')}</h2>
       </div>
-
-      <nav className="hidden md:flex items-center gap-8">
-        <button onClick={onMyFleetClick} className="text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal">{t('my_fleet')}</button>
-        <button onClick={onManageListingsClick} className="text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal">{t('manage_listings')}</button>
-      </nav>
 
       <div className="flex items-center gap-4">
         <LanguageSwitcher />
@@ -48,13 +47,16 @@ const Header: React.FC<HeaderProps> = ({
 
         {user ? (
           <div className="flex items-center gap-3">
-            <button
-              onClick={onCreateListing}
-              className="hidden sm:flex bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-bold transition-all items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-[18px]">add</span>
-              List Item
-            </button>
+            {/* List Item button - only for dealers/admins */}
+            {canCreateListing && (
+              <button
+                onClick={onCreateListing}
+                className="hidden sm:flex bg-primary hover:bg-primary-dark text-slate-900 px-4 py-2 rounded-lg text-sm font-bold transition-all items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                List Item
+              </button>
+            )}
             <div className="relative group">
               <button className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden border-2 border-white dark:border-slate-600 shadow-sm flex items-center justify-center">
                 {user.photoURL ? (
@@ -67,9 +69,37 @@ const Header: React.FC<HeaderProps> = ({
               <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-surface-dark rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right">
                 <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
                   <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                  <p className="text-xs text-primary font-medium capitalize mt-0.5">{userRole || 'User'}</p>
                 </div>
                 <div className="py-1">
-                  <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">Sign out</button>
+                  {/* My Fleet - only for dealers and admins */}
+                  {(userRole === 'dealer' || userRole === 'admin') && (
+                    <button
+                      onClick={onMyFleetClick}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">inventory_2</span>
+                      My Fleet
+                    </button>
+                  )}
+                  {/* Admin Panel - only for admins */}
+                  {userRole === 'admin' && (
+                    <button
+                      onClick={onAdminPanelClick}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+                      Admin Panel
+                    </button>
+                  )}
+                  {/* Divider if there are menu items above */}
+                  {(userRole === 'dealer' || userRole === 'admin') && (
+                    <div className="border-t border-slate-100 dark:border-slate-800 my-1"></div>
+                  )}
+                  <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[18px]">logout</span>
+                    Sign out
+                  </button>
                 </div>
               </div>
             </div>

@@ -8,6 +8,7 @@ import LoginScreen from './components/Auth/LoginScreen';
 import SignUpScreen from './components/Auth/SignUpScreen';
 import CreateListingScreen from './components/Listings/CreateListingScreen';
 import MyFleetScreen from './components/Listings/MyFleetScreen';
+import AdminPanelScreen from './components/Admin/AdminPanelScreen';
 import { EquipmentListing, ViewState } from './types';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -16,7 +17,7 @@ const AppContent: React.FC = () => {
   const [selectedListing, setSelectedListing] = useState<EquipmentListing | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const { t } = useTranslation();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, userRole, logout } = useAuth();
 
   useEffect(() => {
     if (darkMode) {
@@ -48,18 +49,24 @@ const AppContent: React.FC = () => {
   const handleCreateListingClick = () => {
     if (!currentUser) {
       setView('login');
-    } else {
+    } else if (userRole === 'dealer' || userRole === 'admin') {
       setView('create-listing');
     }
   };
 
-  const handleProtectedAction = (actionName: string) => {
+  const handleMyFleetClick = () => {
     if (!currentUser) {
       setView('login');
-    } else if (actionName === 'My Fleet') {
+    } else if (userRole === 'dealer' || userRole === 'admin') {
       setView('my-fleet');
-    } else {
-      alert(`${actionName} feature coming soon!`);
+    }
+  };
+
+  const handleAdminPanelClick = () => {
+    if (!currentUser) {
+      setView('login');
+    } else if (userRole === 'admin') {
+      setView('admin-panel');
     }
   };
 
@@ -80,6 +87,10 @@ const AppContent: React.FC = () => {
     return <MyFleetScreen onBack={() => setView('search')} onCreateListing={() => setView('create-listing')} />;
   }
 
+  if (view === 'admin-panel') {
+    return <AdminPanelScreen onBack={() => setView('search')} />;
+  }
+
   return (
     <div className="min-h-screen bg-white dark:bg-black transition-colors duration-300 font-sans text-slate-900 dark:text-slate-100">
       <Header
@@ -88,10 +99,11 @@ const AppContent: React.FC = () => {
         onLogoClick={() => setView('search')}
         onLoginClick={handleLoginClick}
         user={currentUser}
+        userRole={userRole}
         onLogout={logout}
         onCreateListing={handleCreateListingClick}
-        onMyFleetClick={() => handleProtectedAction('My Fleet')}
-        onManageListingsClick={() => handleProtectedAction('Manage Listings')}
+        onMyFleetClick={handleMyFleetClick}
+        onAdminPanelClick={handleAdminPanelClick}
       />
 
       <main className="pt-[65px]">

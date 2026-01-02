@@ -130,7 +130,7 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                     geohash: null
                 },
                 images: imageUrls,
-                status: 'active',
+                status: 'pending', // Listings require admin approval before going live
                 createdAt: serverTimestamp()
             };
 
@@ -151,7 +151,7 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
             <div className="max-w-3xl mx-auto">
                 <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-xl p-8">
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center justify-between mb-4">
                         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                             List Your Equipment
                         </h1>
@@ -161,6 +161,15 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                         >
                             <span className="material-symbols-outlined">close</span>
                         </button>
+                    </div>
+
+                    {/* Pending Notice */}
+                    <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start gap-3">
+                        <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 flex-shrink-0">info</span>
+                        <div>
+                            <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Review Required</p>
+                            <p className="text-sm text-amber-700 dark:text-amber-400 mt-0.5">Your listing will be reviewed by our team before going live. This usually takes 24-48 hours.</p>
+                        </div>
                     </div>
 
                     {error && (

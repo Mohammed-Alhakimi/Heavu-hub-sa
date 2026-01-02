@@ -125,8 +125,12 @@ const AppContent: React.FC = () => {
             </div>
             <span className="font-black text-lg tracking-tight">Heavy Hub</span>
           </div>
-          <div className="text-sm text-slate-500">
-            © 2024 Heavy Hub Inc. All rights reserved.
+          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-sm text-slate-500">
+            <span>Copyright © HeavyHub. All rights reserved.</span>
+            <div className="flex gap-4">
+              <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
+              <a href="#" className="hover:text-primary transition-colors">Terms</a>
+            </div>
           </div>
         </div>
       </footer>

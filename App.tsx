@@ -129,10 +129,7 @@ const AppContent: React.FC = () => {
       <footer className="bg-white dark:bg-surface-dark border-t border-slate-200 dark:border-slate-800 py-12 px-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2">
-            <div className="bg-primary/10 p-2 rounded-xl">
-              <span className="material-symbols-outlined text-primary">construction</span>
-            </div>
-            <span className="font-black text-lg tracking-tight">Heavy Hub</span>
+            <img src="/logo.png" alt="Heavy Hub" className="h-8 w-auto" />
           </div>
           <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-sm text-slate-500">
             <span>Copyright © HeavyHub. All rights reserved.</span>

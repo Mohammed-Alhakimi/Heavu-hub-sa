@@ -15,7 +15,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState('machine_specs');
   const [intent, setIntent] = useState<'rent' | 'buy'>(listing.forRent ? 'rent' : 'buy');
-  const [mainImage, setMainImage] = useState(listing.images[0]);
+  const [mainImage, setMainImage] = useState(listing.images?.[0] || '');
 
   // Update active tab when language changes if needed, or just rely on keys if possible. 
   // Simplified for now: we will just use keys for rendering.
@@ -43,11 +43,17 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
           {/* Gallery Section */}
           <div className="flex flex-col gap-4">
             <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-gray-200 group shadow-lg">
-              <img
-                src={mainImage}
-                alt={listing.name}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-              />
+              {mainImage ? (
+                <img
+                  src={mainImage}
+                  alt={listing.name || 'Equipment'}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-800">
+                  <span className="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-600">image</span>
+                </div>
+              )}
               <div className="absolute bottom-4 right-4 flex gap-2">
                 <button className="bg-black/50 hover:bg-black/70 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
                   <span className="material-symbols-outlined text-[18px]">360</span>
@@ -60,20 +66,24 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
               </div>
             </div>
 
-            <div className="grid grid-cols-5 gap-3">
-              {listing.images.map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setMainImage(img)}
-                  className={`aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all ${mainImage === img ? 'border-primary ring-2 ring-primary/20 scale-95' : 'border-transparent hover:opacity-80'}`}
-                >
-                  <img src={img} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
-                </button>
-              ))}
-              <div className="aspect-[4/3] rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-medium cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                +8 More
+            {listing.images && listing.images.length > 0 && (
+              <div className="grid grid-cols-5 gap-3">
+                {listing.images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setMainImage(img)}
+                    className={`aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all ${mainImage === img ? 'border-primary ring-2 ring-primary/20 scale-95' : 'border-transparent hover:opacity-80'}`}
+                  >
+                    <img src={img} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+                {listing.images.length > 5 && (
+                  <div className="aspect-[4/3] rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-medium cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                    +{listing.images.length - 5} More
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
 
           {/* Title & Badges */}
@@ -209,32 +219,62 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
           </div>
 
           {/* Seller Profile */}
-          <div className="border-t border-slate-200 dark:border-slate-700 pt-8">
-            <h3 className="text-lg font-bold mb-4">About the Seller</h3>
-            <div className="flex items-start gap-4">
-              <div className="size-16 rounded-full bg-slate-200 overflow-hidden shrink-0 border-2 border-slate-100 dark:border-slate-800 shadow-sm">
-                <img src={listing.seller.avatar} alt={listing.seller.name} className="w-full h-full object-cover" />
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-lg">{listing.seller.name}</span>
-                  <span className="material-symbols-outlined text-blue-500 text-[18px]" title="Verified Dealer">verified</span>
+          {listing.seller ? (
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-8">
+              <h3 className="text-lg font-bold mb-4">About the Seller</h3>
+              <div className="flex items-start gap-4">
+                <div className="size-16 rounded-full bg-slate-200 overflow-hidden shrink-0 border-2 border-slate-100 dark:border-slate-800 shadow-sm">
+                  {listing.seller.avatar ? (
+                    <img src={listing.seller.avatar} alt={listing.seller.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold text-xl">
+                      {listing.seller.name?.charAt(0) || 'S'}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-1 text-sm text-yellow-500 my-1">
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i} className={`material-symbols-outlined text-[16px] ${i < Math.floor(listing.seller.rating) ? 'fill-current' : ''}`}>
-                      {i < Math.floor(listing.seller.rating) ? 'star' : (i < listing.seller.rating ? 'star_half' : 'star')}
-                    </span>
-                  ))}
-                  <span className="text-slate-500 dark:text-slate-400 ml-2 text-xs font-medium">({listing.seller.reviewsCount} reviews)</span>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-lg">{listing.seller.name || 'Seller'}</span>
+                    {listing.isVerifiedDealer && (
+                      <span className="material-symbols-outlined text-blue-500 text-[18px]" title="Verified Dealer">verified</span>
+                    )}
+                  </div>
+                  {listing.seller.rating !== undefined && (
+                    <div className="flex items-center gap-1 text-sm text-yellow-500 my-1">
+                      {[...Array(5)].map((_, i) => (
+                        <span key={i} className={`material-symbols-outlined text-[16px] ${i < Math.floor(listing.seller!.rating) ? 'fill-current' : ''}`}>
+                          {i < Math.floor(listing.seller!.rating) ? 'star' : (i < listing.seller!.rating ? 'star_half' : 'star')}
+                        </span>
+                      ))}
+                      <span className="text-slate-500 dark:text-slate-400 ml-2 text-xs font-medium">({listing.seller.reviewsCount || 0} reviews)</span>
+                    </div>
+                  )}
+                  {listing.seller.description && (
+                    <p className="text-sm text-slate-600 dark:text-slate-300 max-w-xl leading-relaxed">
+                      {listing.seller.description}
+                    </p>
+                  )}
+                  <button className="mt-3 text-primary text-sm font-bold self-start hover:underline">View Dealer Profile</button>
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-300 max-w-xl leading-relaxed">
-                  {listing.seller.description}
-                </p>
-                <button className="mt-3 text-primary text-sm font-bold self-start hover:underline">View Dealer Profile</button>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-8">
+              <h3 className="text-lg font-bold mb-4">About the Seller</h3>
+              <div className="flex items-start gap-4">
+                <div className="size-16 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0 border-2 border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-center">
+                  <span className="material-symbols-outlined text-slate-400 text-2xl">person</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-lg">Private Seller</span>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    Contact information available upon request.
+                  </p>
+                  <button className="mt-3 text-primary text-sm font-bold self-start hover:underline">Contact Seller</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Transaction Sidebar */}

@@ -27,10 +27,11 @@ const Header: React.FC<HeaderProps> = ({
         className="flex items-center gap-2 cursor-pointer group"
         onClick={onLogoClick}
       >
-        <div className="bg-primary p-1.5 rounded-lg group-hover:scale-105 transition-transform">
-          <span className="material-symbols-outlined text-white text-xl">construction</span>
-        </div>
-        <h2 className="text-xl font-bold leading-tight tracking-[-0.015em]">{t('app_title')}</h2>
+        <img
+          src="/logo.png"
+          alt="Heavy Hub"
+          className="h-10 w-auto group-hover:scale-105 transition-transform"
+        />
       </div>
 
       <div className="flex items-center gap-4">

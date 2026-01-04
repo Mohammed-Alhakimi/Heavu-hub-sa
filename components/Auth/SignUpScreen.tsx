@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../../firebase'; // Adjust path if needed
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { formatPhoneNumber, isValidPhoneNumber } from '../../utils/phone';
 
 interface SignUpScreenProps {
     onNavigateToLogin: () => void;
@@ -14,6 +15,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateToLogin, onSignUp
     const [confirmPassword, setConfirmPassword] = useState('');
     const [fullName, setFullName] = useState('');
     const [role, setRole] = useState<'buyer' | 'dealer'>('buyer');
+    const [phoneNumber, setPhoneNumber] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -22,6 +24,10 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateToLogin, onSignUp
 
         if (password !== confirmPassword) {
             return setError('Passwords do not match');
+        }
+
+        if (!isValidPhoneNumber(phoneNumber)) {
+            return setError('Please enter a valid Saudi phone number starting with +966 5');
         }
 
         try {
@@ -37,6 +43,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateToLogin, onSignUp
                 uid: user.uid,
                 email: user.email,
                 displayName: fullName,
+                phoneNumber: phoneNumber,
                 role,
                 isVerified: false,
                 createdAt: serverTimestamp(),
@@ -95,6 +102,20 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateToLogin, onSignUp
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
+                                    className="block w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm focus:border-primary focus:ring-primary dark:bg-slate-800 dark:text-white outline-none focus:ring-1"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Phone Number</label>
+                            <div className="mt-1">
+                                <input
+                                    type="tel"
+                                    required
+                                    value={phoneNumber}
+                                    onChange={(e) => setPhoneNumber(formatPhoneNumber(e.target.value))}
+                                    placeholder="+966 5X XXX XXXX"
                                     className="block w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm focus:border-primary focus:ring-primary dark:bg-slate-800 dark:text-white outline-none focus:ring-1"
                                 />
                             </div>

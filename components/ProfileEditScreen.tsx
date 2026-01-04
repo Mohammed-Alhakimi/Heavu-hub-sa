@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { SAUDI_CITIES } from '../constants';
 import { AccountService } from '../services/AccountService';
 import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { formatPhoneNumber, isValidPhoneNumber } from '../utils/phone';
 
 interface ProfileEditScreenProps {
     onBack: () => void;
@@ -132,6 +133,10 @@ const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ onBack, onSuccess
                 throw new Error('Please fill in all required fields');
             }
 
+            if (!isValidPhoneNumber(phoneNumber)) {
+                throw new Error('Please enter a valid Saudi phone number starting with +966 5');
+            }
+
             let photoURL = photoPreview;
 
             if (photoFile) {
@@ -234,7 +239,7 @@ const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ onBack, onSuccess
                         <input
                             type="tel"
                             value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(e.target.value)}
+                            onChange={(e) => setPhoneNumber(formatPhoneNumber(e.target.value))}
                             className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                             placeholder="+966 5X XXX XXXX"
                             required

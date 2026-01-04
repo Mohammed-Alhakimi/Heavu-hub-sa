@@ -24,7 +24,6 @@ export interface EquipmentListing {
   engineModel?: string;
   buyPrice: number;
   rentDaily: number;
-  rentWeekly: number;
   rentMonthly: number;
   images: string[];
   isReadyToWork: boolean;
@@ -50,7 +49,33 @@ export interface EquipmentListing {
   specs?: any;
 }
 
-export type ViewState = 'search' | 'detail' | 'login' | 'signup' | 'create-listing' | 'my-fleet' | 'admin-panel';
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  phoneNumber: string;
+  companyName?: string;
+  photoURL?: string;
+  location?: string;
+  role: 'buyer' | 'dealer' | 'admin';
+  createdAt: any;
+  updatedAt: any;
+}
+
+export interface Booking {
+  id?: string;
+  listingId: string;
+  startDate: any; // Firestore Timestamp or Date ISO string
+  endDate: any;
+  totalPrice: number;
+  userId: string;
+  sellerId: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  createdAt: any;
+  updatedAt: any;
+}
+
+export type ViewState = 'search' | 'detail' | 'login' | 'signup' | 'create-listing' | 'my-fleet' | 'admin-panel' | 'profile' | 'my-bookings';
 
 export interface HeaderProps {
   darkMode: boolean;
@@ -61,6 +86,7 @@ export interface HeaderProps {
   onCreateListing?: () => void;
   onMyFleetClick?: () => void;
   onAdminPanelClick?: () => void;
+  onProfileClick?: () => void;
   user?: any;
   userRole?: 'buyer' | 'dealer' | 'admin' | null;
 }
@@ -73,4 +99,16 @@ export interface SearchFilters {
   minPrice: string;
   maxPrice: string;
   conditions: string[];
+}
+
+export interface DeletionRequest {
+  id?: string;
+  userId: string;
+  userEmail: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reason?: string;
+  createdAt: any;
+  updatedAt: any;
+  approvedAt?: any;
+  approvedBy?: string;
 }

@@ -2,8 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EquipmentListing } from '../types';
-import { getListings } from '../services/listings';
+import { getListings, getListingsCount } from '../services/listings';
 import { formatCurrency } from '../utils/currency';
+import { SAUDI_CITIES } from '../constants';
+import { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 
 interface SearchScreenProps {
   onListingClick: (listing: EquipmentListing) => void;
@@ -20,22 +22,62 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ onListingClick, isAuthentic
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchListings = async () => {
-      try {
-        setLoading(true);
-        const result = await getListings();
-        setListings(result.listings);
-      } catch (err) {
-        console.error('Failed to fetch listings:', err);
-        setError('Failed to load listings. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Pagination state
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [lastVisibles, setLastVisibles] = useState<(QueryDocumentSnapshot<DocumentData> | null)[]>([null]);
 
-    fetchListings();
-  }, []);
+  useEffect(() => {
+    const fetchCount = async () => {
+      const count = await getListingsCount();
+      setTotalCount(count);
+    };
+    fetchCount();
+  }, [activeCategory, intent]);
+
+  const fetchListings = async (page: number, size: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      // For random access to page X, we normally need cursors.
+      // If we don't have the cursor for target page-1, we start from page 1 and fetch up to it.
+      // But for simplicity in this prototype, we'll use the cached cursors if available.
+      const cursor = lastVisibles[page - 1] || null;
+
+      const result = await getListings(size, cursor);
+      setListings(result.listings);
+
+      // Update cursors for next page
+      if (result.lastVisible) {
+        setLastVisibles(prev => {
+          const next = [...prev];
+          next[page] = result.lastVisible;
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch listings:', err);
+      setError('Failed to load listings. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchListings(currentPage, pageSize);
+  }, [currentPage, pageSize, activeCategory, intent]);
+
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > Math.ceil(totalCount / pageSize)) return;
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    setLastVisibles([null]); // Reset cursors when page size changes
+  };
 
   return (
     <div className="flex-1 flex flex-col lg:flex-row max-w-[1600px] mx-auto w-full">
@@ -84,7 +126,17 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ onListingClick, isAuthentic
           </div>
           <div className="relative group mb-2">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary material-symbols-outlined">location_on</span>
-            <input className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm placeholder:text-slate-400 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none" placeholder="City, State or Zip" type="text" />
+            <select
+              className="w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none cursor-pointer"
+            >
+              <option value="">{t('all_locations') || 'All Locations'}</option>
+              {SAUDI_CITIES.map(cid => (
+                <option key={cid} value={cid}>
+                  {t(`cities.${cid}`)}
+                </option>
+              ))}
+            </select>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none material-symbols-outlined">expand_more</span>
           </div>
           <div className="px-1">
             <div className="flex justify-between text-xs text-slate-500 mb-2">
@@ -121,7 +173,13 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ onListingClick, isAuthentic
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-6">
             <div>
               <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">{t('find_equipment')}</h1>
-              <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base">{t('browse_listings')}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base">{t('browse_listings')}</p>
+                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                <span className="bg-primary/5 text-primary text-xs font-bold px-2 py-0.5 rounded-full border border-primary/10">
+                  {totalCount} {t('listings_found') || 'Listings Found'}
+                </span>
+              </div>
             </div>
 
             <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center shadow-inner">
@@ -151,13 +209,27 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ onListingClick, isAuthentic
                 {t('clear_all')}
               </button>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-500 hidden sm:inline-block">{t('sort_by')}:</span>
-              <select className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer">
-                <option>Recommended</option>
-                <option>Price: Low to High</option>
-                <option>Price: High to Low</option>
-              </select>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500 hidden sm:inline-block">{t('show')}:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
+                  className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-500 hidden sm:inline-block">{t('sort_by')}:</span>
+                <select className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer">
+                  <option>Recommended</option>
+                  <option>Price: Low to High</option>
+                  <option>Price: High to Low</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -238,7 +310,7 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ onListingClick, isAuthentic
                         <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                         <span className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-[14px]">location_on</span>
-                          {typeof listing.location === 'object' ? listing.location.address : listing.location}
+                          {typeof listing.location === 'string' && SAUDI_CITIES.includes(listing.location) ? t(`cities.${listing.location}`) : (typeof listing.location === 'object' ? listing.location.address : listing.location)}
                         </span>
                       </div>
                     </div>
@@ -277,18 +349,66 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ onListingClick, isAuthentic
           )}
 
           {/* Pagination */}
-          {!loading && listings.length > 0 && (
+          {!loading && totalCount > pageSize && (
             <div className="flex justify-center py-8">
               <div className="flex items-center gap-2">
-                <button className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                >
                   <span className="material-symbols-outlined">chevron_{i18n.dir() === 'rtl' ? 'right' : 'left'}</span>
                 </button>
-                <button className="w-10 h-10 rounded-lg bg-primary text-white font-medium flex items-center justify-center shadow-md shadow-primary/20">1</button>
-                <button className="w-10 h-10 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium flex items-center justify-center">2</button>
-                <button className="w-10 h-10 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium flex items-center justify-center">3</button>
-                <span className="text-slate-400 px-2">...</span>
-                <button className="w-10 h-10 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium flex items-center justify-center">12</button>
-                <button className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800">
+
+                {/* Dynamic Page Numbers */}
+                {(() => {
+                  const totalPages = Math.ceil(totalCount / pageSize);
+                  const pages = [];
+                  const showPages = 2; // Number of pages to show around current page
+
+                  for (let i = 1; i <= totalPages; i++) {
+                    if (
+                      i === 1 ||
+                      i === totalPages ||
+                      (i >= currentPage - showPages && i <= currentPage + showPages)
+                    ) {
+                      pages.push(i);
+                    } else if (
+                      (i === currentPage - showPages - 1) ||
+                      (i === currentPage + showPages + 1)
+                    ) {
+                      pages.push('...');
+                    }
+                  }
+
+                  return pages.map((page, index) => {
+                    if (page === '...') {
+                      return (
+                        <span key={`ellipsis-${index}`} className="text-slate-400 px-2 select-none">
+                          ...
+                        </span>
+                      );
+                    }
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page as number)}
+                        className={`w-10 h-10 rounded-lg font-medium flex items-center justify-center transition-all ${currentPage === page
+                          ? 'bg-primary text-white shadow-md shadow-primary/20 scale-110'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  });
+                })()}
+
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === Math.ceil(totalCount / pageSize)}
+                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                >
                   <span className="material-symbols-outlined">chevron_{i18n.dir() === 'rtl' ? 'left' : 'right'}</span>
                 </button>
               </div>

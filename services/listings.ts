@@ -13,7 +13,8 @@ import {
     Timestamp,
     doc,
     updateDoc,
-    deleteDoc
+    deleteDoc,
+    getCountFromServer
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { EquipmentListing } from '../types';
@@ -27,6 +28,7 @@ export interface GetListingsResult {
 }
 
 export const getListings = async (
+    pageSize: number = PAGE_SIZE,
     lastVisible: QueryDocumentSnapshot<DocumentData> | null = null
 ): Promise<GetListingsResult> => {
     try {
@@ -34,7 +36,7 @@ export const getListings = async (
             collection(db, LISTINGS_COLLECTION),
             where('status', '==', 'active'),
             orderBy('approvedAt', 'desc'),
-            limit(PAGE_SIZE)
+            limit(pageSize)
         );
 
         if (lastVisible) {
@@ -43,7 +45,7 @@ export const getListings = async (
                 where('status', '==', 'active'),
                 orderBy('approvedAt', 'desc'),
                 startAfter(lastVisible),
-                limit(PAGE_SIZE)
+                limit(pageSize)
             );
         }
 
@@ -139,5 +141,19 @@ export const deleteListing = async (listingId: string) => {
     } catch (error) {
         console.error('Error deleting listing:', error);
         throw error;
+    }
+};
+
+export const getListingsCount = async (): Promise<number> => {
+    try {
+        const q = query(
+            collection(db, LISTINGS_COLLECTION),
+            where('status', '==', 'active')
+        );
+        const snapshot = await getCountFromServer(q);
+        return snapshot.data().count;
+    } catch (error) {
+        console.error('Error getting listings count:', error);
+        return 0;
     }
 };

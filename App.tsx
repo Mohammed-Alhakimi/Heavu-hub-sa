@@ -9,6 +9,7 @@ import SignUpScreen from './components/Auth/SignUpScreen';
 import CreateListingScreen from './components/Listings/CreateListingScreen';
 import MyFleetScreen from './components/Listings/MyFleetScreen';
 import AdminPanelScreen from './components/Admin/AdminPanelScreen';
+import ProfileEditScreen from './components/ProfileEditScreen';
 import { EquipmentListing, ViewState } from './types';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -17,7 +18,7 @@ const AppContent: React.FC = () => {
   const [selectedListing, setSelectedListing] = useState<EquipmentListing | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const { t } = useTranslation();
-  const { currentUser, userRole, logout } = useAuth();
+  const { currentUser, profile, userRole, logout } = useAuth();
 
   useEffect(() => {
     if (darkMode) {
@@ -72,23 +73,27 @@ const AppContent: React.FC = () => {
 
   // Render Auth Screens
   if (view === 'login') {
-    return <LoginScreen onNavigateToSignUp={() => setView('signup')} onLoginSuccess={handleAuthSuccess} />;
+    return <div className="page-transition-modal"><LoginScreen onNavigateToSignUp={() => setView('signup')} onLoginSuccess={handleAuthSuccess} /></div>;
   }
 
   if (view === 'signup') {
-    return <SignUpScreen onNavigateToLogin={() => setView('login')} onSignUpSuccess={handleAuthSuccess} />;
+    return <div className="page-transition-modal"><SignUpScreen onNavigateToLogin={() => setView('login')} onSignUpSuccess={handleAuthSuccess} /></div>;
   }
 
   if (view === 'create-listing') {
-    return <CreateListingScreen onSuccess={() => setView('my-fleet')} onCancel={() => setView('search')} />;
+    return <div className="page-transition"><CreateListingScreen onSuccess={() => setView('my-fleet')} onCancel={() => setView('search')} /></div>;
   }
 
   if (view === 'my-fleet') {
-    return <MyFleetScreen onBack={() => setView('search')} onCreateListing={() => setView('create-listing')} />;
+    return <div className="page-transition"><MyFleetScreen onBack={() => setView('search')} onCreateListing={() => setView('create-listing')} /></div>;
   }
 
   if (view === 'admin-panel') {
-    return <AdminPanelScreen onBack={() => setView('search')} />;
+    return <div className="page-transition"><AdminPanelScreen onBack={() => setView('search')} /></div>;
+  }
+
+  if (view === 'profile') {
+    return <div className="page-transition"><ProfileEditScreen onBack={() => setView('search')} onSuccess={() => setView('search')} /></div>;
   }
 
   return (
@@ -99,29 +104,35 @@ const AppContent: React.FC = () => {
         onLogoClick={() => setView('search')}
         onLoginClick={handleLoginClick}
         user={currentUser}
+        userProfile={profile}
         userRole={userRole}
         onLogout={logout}
         onCreateListing={handleCreateListingClick}
         onMyFleetClick={handleMyFleetClick}
         onAdminPanelClick={handleAdminPanelClick}
+        onProfileClick={() => setView('profile')}
       />
 
       <main className="pt-[65px]">
         {view === 'search' && (
-          <SearchScreen
-            onListingClick={handleListingClick}
-            isAuthenticated={!!currentUser}
-            onRestrictedAction={() => setView('login')}
-          />
+          <div key="search" className="page-transition">
+            <SearchScreen
+              onListingClick={handleListingClick}
+              isAuthenticated={!!currentUser}
+              onRestrictedAction={() => setView('login')}
+            />
+          </div>
         )}
 
         {view === 'detail' && selectedListing && (
-          <DetailScreen
-            listing={selectedListing}
-            onBack={handleBack}
-            isAuthenticated={!!currentUser}
-            onRestrictedAction={() => setView('login')}
-          />
+          <div key="detail" className="page-transition-detail">
+            <DetailScreen
+              listing={selectedListing}
+              onBack={handleBack}
+              isAuthenticated={!!currentUser}
+              onRestrictedAction={() => setView('login')}
+            />
+          </div>
         )}
       </main>
 

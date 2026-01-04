@@ -3,11 +3,15 @@ import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/a
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
+import { UserProfile } from '../types';
+
 interface AuthContextType {
     currentUser: User | null;
+    profile: UserProfile | null;
     userRole: 'buyer' | 'dealer' | 'admin' | null;
     loading: boolean;
     logout: () => Promise<void>;
+    refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -22,27 +26,36 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [profile, setProfile] = useState<UserProfile | null>(null);
     const [userRole, setUserRole] = useState<'buyer' | 'dealer' | 'admin' | null>(null);
     const [loading, setLoading] = useState(true);
+
+    const fetchProfile = async (uid: string) => {
+        try {
+            const userDoc = await getDoc(doc(db, 'users', uid));
+            if (userDoc.exists()) {
+                const data = userDoc.data() as UserProfile;
+                setProfile(data);
+                setUserRole(data.role || 'buyer');
+            } else {
+                setProfile(null);
+                setUserRole('buyer');
+            }
+        } catch (error) {
+            console.error("Error fetching user profile:", error);
+            setProfile(null);
+            setUserRole(null);
+        }
+    };
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
 
             if (user) {
-                // Fetch user role from Firestore
-                try {
-                    const userDoc = await getDoc(doc(db, 'users', user.uid));
-                    if (userDoc.exists()) {
-                        setUserRole(userDoc.data().role as 'buyer' | 'dealer' | 'admin');
-                    } else {
-                        setUserRole('buyer'); // Default fallback
-                    }
-                } catch (error) {
-                    console.error("Error fetching user role:", error);
-                    setUserRole(null);
-                }
+                await fetchProfile(user.uid);
             } else {
+                setProfile(null);
                 setUserRole(null);
             }
 
@@ -56,11 +69,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return firebaseSignOut(auth);
     };
 
+    const refreshProfile = async () => {
+        if (currentUser) {
+            await fetchProfile(currentUser.uid);
+        }
+    };
+
     const value = {
         currentUser,
+        profile,
         userRole,
         loading,
-        logout
+        logout,
+        refreshProfile
     };
 
     return (

@@ -1,8 +1,11 @@
-
 import React, { useState } from 'react';
-import { EquipmentListing } from '../types';
+import { EquipmentListing, Booking } from '../types';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../utils/currency';
+import { SAUDI_CITIES } from '../constants';
+import { useAuth } from '../contexts/AuthContext';
+import { BookingService } from '../services/BookingService';
+import { Timestamp } from 'firebase/firestore';
 
 interface DetailScreenProps {
   listing: EquipmentListing;
@@ -13,9 +16,112 @@ interface DetailScreenProps {
 
 const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenticated = false, onRestrictedAction = () => { } }) => {
   const { t, i18n } = useTranslation();
+  const { currentUser, profile } = useAuth();
   const [activeTab, setActiveTab] = useState('machine_specs');
   const [intent, setIntent] = useState<'rent' | 'buy'>(listing.forRent ? 'rent' : 'buy');
   const [mainImage, setMainImage] = useState(listing.images?.[0] || '');
+
+  // Booking State
+  const today = new Date().toISOString().split('T')[0];
+  const maxBookingDate = new Date();
+  maxBookingDate.setMonth(maxBookingDate.getMonth() + 6);
+  const maxDate = maxBookingDate.toISOString().split('T')[0];
+
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [totalPrice, setTotalPrice] = useState(0);
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingError, setBookingError] = useState('');
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookedDates, setBookedDates] = useState<{ start: Date, end: Date }[]>([]);
+
+  React.useEffect(() => {
+    const fetchBookings = async () => {
+      if (listing.id) {
+        const dates = await BookingService.getBookedDates(listing.id);
+        setBookedDates(dates);
+      }
+    };
+    fetchBookings();
+  }, [listing.id]);
+
+  React.useEffect(() => {
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      let price = 0;
+      if (diffDays > 0) {
+        if (diffDays >= 30) {
+          price = listing.rentMonthly * (diffDays / 30);
+        } else {
+          price = listing.rentDaily * diffDays;
+        }
+      }
+      setTotalPrice(price);
+    } else {
+      setTotalPrice(0);
+    }
+  }, [startDate, endDate, listing]);
+
+  const handleRequestBooking = async () => {
+    if (!isAuthenticated) {
+      onRestrictedAction();
+      return;
+    }
+
+    if (!profile?.phoneNumber) {
+      setBookingError('Please add a phone number to your profile to request rentals.');
+      return;
+    }
+
+    if (!startDate || !endDate) {
+      setBookingError('Please select both start and end dates.');
+      return;
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (end <= start) {
+      setBookingError('End date must be after start date.');
+      return;
+    }
+
+    setIsBooking(true);
+    setBookingError('');
+
+    try {
+      const hasConflict = await BookingService.checkConflict(listing.id, start, end);
+      if (hasConflict) {
+        setBookingError('These dates are already booked. Please select other dates.');
+        setIsBooking(false);
+        return;
+      }
+
+      await BookingService.createBooking({
+        listingId: listing.id,
+        userId: currentUser!.uid,
+        sellerId: listing.sellerId || '',
+        startDate: Timestamp.fromDate(start),
+        endDate: Timestamp.fromDate(end),
+        totalPrice: totalPrice
+      });
+
+      setBookingSuccess(true);
+      setTimeout(() => setBookingSuccess(false), 5000);
+    } catch (err: any) {
+      console.error('Error creating booking:', err);
+      setBookingError('Failed to create booking. Please try again.');
+    } finally {
+      setIsBooking(false);
+    }
+  };
+
+  const isOwner = currentUser?.uid === listing.sellerId;
+  const isAvailable = listing.status === 'active' && listing.isAvailable;
 
   // Update active tab when language changes if needed, or just rely on keys if possible. 
   // Simplified for now: we will just use keys for rendering.
@@ -107,7 +213,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
                 <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{listing.name}</h1>
                 <p className="text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
                   <span className="material-symbols-outlined text-[18px]">location_on</span>
-                  {listing.location} • SN: {listing.serialNumber}
+                  {typeof listing.location === 'string' && SAUDI_CITIES.includes(listing.location) ? t(`cities.${listing.location}`) : listing.location} • SN: {listing.serialNumber}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -146,24 +252,28 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
             {/* Specs Content */}
             {activeTab === 'machine_specs' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 animate-fadeIn">
-                <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
-                  <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg">timer</span> {t('hours')}
-                  </span>
-                  <span className="font-semibold">{listing.hours ? `${listing.hours.toLocaleString()} hrs` : 'N/A'}</span>
-                </div>
+                {listing.hours && listing.hours > 0 ? (
+                  <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-lg">timer</span> {t('hours')}
+                    </span>
+                    <span className="font-semibold">{listing.hours.toLocaleString()} hrs</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
                     <span className="material-symbols-outlined text-lg">calendar_month</span> {t('year')}
                   </span>
                   <span className="font-semibold">{listing.year}</span>
                 </div>
-                <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
-                  <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg">weight</span> {t('operating_weight')}
-                  </span>
-                  <span className="font-semibold">{listing.weight || '48,281 lbs'}</span>
-                </div>
+                {listing.weight && parseInt(listing.weight.toString()) > 0 ? (
+                  <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-lg">weight</span> {t('operating_weight')}
+                    </span>
+                    <span className="font-semibold">{listing.weight} kg</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
                     <span className="material-symbols-outlined text-lg">speed</span> {t('net_power')}
@@ -203,7 +313,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
                 <div className="relative h-40 w-full rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                   <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVVVY7LXiDk2f16p1R7nUC_I2oGpjKSEkCqER6Q7jNhbrY1Lfx8tuoL0Llz1nfobuII19jy2TTasrXArrm7wD-MCKPaMzFSzMlUN2m8Ysa-fRxUgVBsBDFmeKu6g18gFSelGGRgREGlya_HpE48Whr0sLJto4M29Z_ziptjwzuYEsC8_kDBrfD_QDX6GqfmOWPYmtBQp0rwJndQkjrfqfuK33JphA2KdeCGkzW-KMAkCEA2KDY1LgFvPuHR68AbQGRAZ-Sskhs4vqG" className="w-full h-full object-cover opacity-60 grayscale dark:invert dark:opacity-40" />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="bg-white/90 dark:bg-black/70 px-4 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm border border-slate-200 dark:border-slate-700">Origin: {listing.location}</span>
+                    <span className="bg-white/90 dark:bg-black/70 px-4 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm border border-slate-200 dark:border-slate-700">Origin: {typeof listing.location === 'string' && SAUDI_CITIES.includes(listing.location) ? t(`cities.${listing.location}`) : listing.location}</span>
                   </div>
                 </div>
               </div>
@@ -299,15 +409,39 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
 
               {intent === 'rent' ? (
                 <div className="p-6 pt-2 flex flex-col gap-6 animate-fadeIn">
+                  {/* Validation Banners */}
+                  {isOwner && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded-lg text-xs font-medium text-amber-700 dark:text-amber-400">
+                      You are the owner of this listing. You cannot book your own equipment.
+                    </div>
+                  )}
+                  {!isAvailable && (
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg text-xs font-medium text-red-700 dark:text-red-400">
+                      This item is currently unavailable or under maintenance.
+                    </div>
+                  )}
+                  {bookingError && (
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg text-xs font-medium text-red-700 dark:text-red-400">
+                      {bookingError}
+                    </div>
+                  )}
+                  {bookingSuccess && (
+                    <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-3 rounded-lg text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      Booking request sent successfully!
+                    </div>
+                  )}
+                  {isAuthenticated && !profile?.phoneNumber && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded-lg text-xs font-medium text-amber-700 dark:text-amber-400">
+                      Please add a phone number to your profile to request rentals.
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-3 gap-2.5 text-center">
                     <div className="flex flex-col p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest">{t('daily')}</span>
                       <span className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(listing.rentDaily, i18n.language)}</span>
                     </div>
-                    <div className="flex flex-col p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest">{t('weekly')}</span>
-                      <span className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(listing.rentWeekly, i18n.language)}</span>
-                    </div>
+                    <div className="flex-1"></div>
                     <div className="flex flex-col p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest">{t('monthly')}</span>
                       <span className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(listing.rentMonthly, i18n.language)}</span>
@@ -318,34 +452,57 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
                     <div className="grid grid-cols-2 gap-3">
                       <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('start_date')}</label>
-                        <input className="w-full rounded-lg border-slate-200 dark:border-slate-600 bg-transparent text-sm py-2 pl-3 focus:ring-primary focus:border-primary outline-none" type="date" defaultValue="2023-10-15" />
+                        <input
+                          className="w-full rounded-lg border-slate-200 dark:border-slate-600 bg-transparent text-sm py-2 pl-3 focus:ring-primary focus:border-primary outline-none disabled:opacity-50"
+                          type="date"
+                          min={today}
+                          max={maxDate}
+                          value={startDate}
+                          onChange={(e) => {
+                            setStartDate(e.target.value);
+                            if (endDate && new Date(e.target.value) >= new Date(endDate)) {
+                              setEndDate('');
+                            }
+                          }}
+                          disabled={!isAvailable || isOwner}
+                        />
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('end_date')}</label>
-                        <input className="w-full rounded-lg border-slate-200 dark:border-slate-600 bg-transparent text-sm py-2 pl-3 focus:ring-primary focus:border-primary outline-none" type="date" defaultValue="2023-10-22" />
+                        <input
+                          className="w-full rounded-lg border-slate-200 dark:border-slate-600 bg-transparent text-sm py-2 pl-3 focus:ring-primary focus:border-primary outline-none disabled:opacity-50"
+                          type="date"
+                          min={startDate ? new Date(new Date(startDate).getTime() + 86400000).toISOString().split('T')[0] : today}
+                          max={maxDate}
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          disabled={!startDate || !isAvailable || isOwner}
+                        />
                       </div>
                     </div>
 
                     {/* Calendar visualizer placeholder */}
                     <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold text-slate-600 dark:text-slate-400">October 2023</span>
+                        <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Current Bookings</span>
                         <div className="flex gap-2">
-                          <div className="flex items-center gap-1"><div className="size-2 rounded-full bg-slate-300"></div><span className="text-[10px] text-slate-400">Past</span></div>
-                          <div className="flex items-center gap-1"><div className="size-2 rounded-full bg-red-400"></div><span className="text-[10px] text-slate-400">Blocked</span></div>
+                          <div className="flex items-center gap-1"><div className="size-2 rounded-full bg-red-400"></div><span className="text-[10px] text-slate-400">Booked</span></div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold">
-                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => <span key={d} className="text-slate-400 mb-1">{d}</span>)}
-                        {[...Array(31)].map((_, i) => {
-                          const day = i + 1;
-                          let style = "py-1.5 rounded-md cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 ";
-                          if (day < 5) style += "text-slate-300 ";
-                          else if (day >= 5 && day <= 9) style += "bg-red-50 text-red-400 cursor-not-allowed ";
-                          else if (day >= 15 && day <= 22) style += "bg-primary text-white shadow-sm ";
-                          else style += "text-slate-700 dark:text-slate-200 ";
-                          return <div key={i} className={style}>{day}</div>;
-                        })}
+                      <div className="text-[10px] text-slate-500">
+                        {bookedDates.length > 0 ? (
+                          <div className="space-y-1">
+                            {bookedDates.map((d, i) => (
+                              <div key={i} className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1">
+                                <span>{d.start.toLocaleDateString()}</span>
+                                <span>to</span>
+                                <span>{d.end.toLocaleDateString()}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          "No existing bookings for this item."
+                        )}
                       </div>
                     </div>
                   </div>
@@ -353,14 +510,28 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
                   <div className="flex flex-col gap-3 pt-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-slate-500">{t('estimated_total')}</span>
-                      <span className="font-black text-slate-900 dark:text-white text-2xl">{formatCurrency(2150, i18n.language)}</span>
+                      <div className="flex flex-col items-end">
+                        <span className="font-black text-slate-900 dark:text-white text-2xl">
+                          {totalPrice > 0 ? formatCurrency(totalPrice, i18n.language) : '---'}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium">(excluding VAT charges)</span>
+                      </div>
                     </div>
                     <button
-                      onClick={() => !isAuthenticated && onRestrictedAction()}
-                      className="w-full bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-xl shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2 group"
+                      onClick={handleRequestBooking}
+                      disabled={isBooking || isOwner || !isAvailable || (isAuthenticated && !profile?.phoneNumber) || (totalPrice <= 0 && isAuthenticated)}
+                      className="w-full bg-primary hover:bg-primary-dark disabled:bg-slate-400 text-white font-black py-4 rounded-xl shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2 group disabled:shadow-none"
                     >
-                      {t('request_booking')}
-                      <span className={`material-symbols-outlined text-[20px] ${i18n.dir() === 'rtl' ? 'rotate-180' : ''} group-hover:translate-x-1 transition-transform`}>arrow_forward</span>
+                      {isBooking ? (
+                        <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : isOwner ? (
+                        "Manage Listing"
+                      ) : (
+                        <>
+                          {t('request_booking')}
+                          <span className={`material-symbols-outlined text-[20px] ${i18n.dir() === 'rtl' ? 'rotate-180' : ''} group-hover:translate-x-1 transition-transform`}>arrow_forward</span>
+                        </>
+                      )}
                     </button>
                     <p className="text-center text-xs text-slate-400">{t('no_charge_yet')}</p>
                   </div>

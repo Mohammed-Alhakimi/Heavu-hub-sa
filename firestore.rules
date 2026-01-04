@@ -27,7 +27,9 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if isOwner(userId); // On sign up
-      allow update: if isOwner(userId);
+      allow update: if isOwner(userId) && (
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) || isAdmin()
+      );
       allow delete: if false; // Only admin can delete via backend
       
       // User Favorites (Subcollection)
@@ -42,11 +44,26 @@ service cloud.firestore {
     // - Sellers create with 'pending' status
     // - Only admin can change status field
     match /listings/{listingId} {
+      // Helper for listing validation
+      function isValidListing(data) {
+        return data.title is string && data.title.size() <= 32 && data.title.matches('^[a-zA-Z0-9 ]*$') &&
+               data.make is string && data.make.size() <= 32 && data.make.matches('^[a-zA-Z0-9 ]*$') &&
+               data.model is string && data.model.matches('^[a-zA-Z0-9]*$') &&
+               data.year is int &&
+               data.hours is int && data.hours >= 0 &&
+               (!('weight' in data) || data.weight == null || (data.weight is int && data.weight >= 0)) &&
+               (!('netPower' in data) || data.netPower == null || (data.netPower is string && data.netPower.matches('^[a-zA-Z0-9]*$'))) &&
+               data.buyPrice is int && data.buyPrice >= 0 &&
+               data.rentDaily is int && data.rentDaily >= 0 &&
+               data.rentWeekly is int && data.rentWeekly >= 0 &&
+               data.rentMonthly is int && data.rentMonthly >= 0;
+      }
+
       // Public reads only active listings, admin can read all
       allow read: if resource.data.status == 'active' || isAdmin() || (isSignedIn() && resource.data.sellerId == request.auth.uid);
       
       // Sellers/admins can create (new listings are pending)
-      allow create: if isSignedIn() && isSellerOrAdmin();
+      allow create: if isSignedIn() && isSellerOrAdmin() && isValidListing(request.resource.data);
       
       // Updates: owner can update their own (except status), admin can update anything
       allow update: if isSignedIn() && (
@@ -54,6 +71,7 @@ service cloud.firestore {
         isAdmin() ||
         // Owner can update but NOT change status (unless it's their own listing going hidden/active)
         (resource.data.sellerId == request.auth.uid && 
+          isValidListing(request.resource.data) &&
           (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
            request.resource.data.status in ['hidden', 'active'] && resource.data.status in ['active', 'hidden']))
       );
@@ -64,9 +82,13 @@ service cloud.firestore {
 
     // 3. Bookings: Renters can create, Renters/Sellers can read/update their own
     match /bookings/{bookingId} {
-      allow create: if isSignedIn();
-      allow read: if isSignedIn() && (resource.data.renterId == request.auth.uid || resource.data.sellerId == request.auth.uid);
-      allow update: if isSignedIn() && (resource.data.renterId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+      allow create: if isSignedIn() && 
+                      request.resource.data.userId == request.auth.uid &&
+                      request.resource.data.userId != request.resource.data.sellerId &&
+                      request.resource.data.startDate < request.resource.data.endDate &&
+                      request.resource.data.totalPrice > 0;
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
     }
 
     // 4. Offers: Authenticated users can create, Buyers/Sellers can read/update
@@ -86,6 +108,17 @@ service cloud.firestore {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
         allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
       }
+    }
+
+    // 5. Deletion Requests: 
+    // - Users can create their own quest
+    // - Users can read their own request
+    // - Admin can read/update all
+    match /deletionRequests/{requestId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
   }
 }

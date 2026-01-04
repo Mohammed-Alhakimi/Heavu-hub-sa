@@ -34,8 +34,9 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateToLogin, onSignUp
 
             // 2. Create user document in Firestore
             await setDoc(doc(db, 'users', user.uid), {
+                uid: user.uid,
                 email: user.email,
-                fullName,
+                displayName: fullName,
                 role,
                 isVerified: false,
                 createdAt: serverTimestamp(),
@@ -105,8 +106,8 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateToLogin, onSignUp
                                 <div
                                     onClick={() => setRole('buyer')}
                                     className={`cursor-pointer rounded-lg border px-3 py-2 text-center text-sm font-medium transition-all ${role === 'buyer'
-                                            ? 'bg-primary/10 border-primary text-primary'
-                                            : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                        ? 'bg-primary/10 border-primary text-primary'
+                                        : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                                         }`}
                                 >
                                     Buyer / Renter
@@ -114,8 +115,8 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateToLogin, onSignUp
                                 <div
                                     onClick={() => setRole('dealer')}
                                     className={`cursor-pointer rounded-lg border px-3 py-2 text-center text-sm font-medium transition-all ${role === 'dealer'
-                                            ? 'bg-primary/10 border-primary text-primary'
-                                            : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                        ? 'bg-primary/10 border-primary text-primary'
+                                        : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                                         }`}
                                 >
                                     Dealer / Seller

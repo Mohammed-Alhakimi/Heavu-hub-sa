@@ -21,7 +21,9 @@
 7. [Creating a Listing](#creating-a-listing)
 8. [Managing Your Fleet](#managing-your-fleet)
 9. [Language & Accessibility](#language--accessibility)
-10. [Frequently Asked Questions](#frequently-asked-questions)
+10. [User Journeys](#user-journeys)
+11. [Technical Stack](#technical-stack)
+12. [Frequently Asked Questions](#frequently-asked-questions)
 
 ---
 
@@ -90,9 +92,20 @@
 Once logged in, you gain access to:
 - **List Item** button to create new equipment listings
 - **My Fleet** section to manage your equipment
-- **User Profile** dropdown with sign-out option
+- **User Profile** dropdown with **Edit Profile** and sign-out options
 
-> 💡 **Tip:** Your email initial appears as your avatar when no profile photo is set.
+### Editing Your Profile
+
+1. Click on your avatar/email in the header
+2. Select **"Edit Profile"** from the dropdown menu
+3. You can update the following information:
+   - **Full Name** - Appears in the header and on your listings
+   - **Phone Number** - Required for potential buyers/renters to contact you
+   - **Company Name** (Optional) - For professional dealers and rental companies
+   - **Location** - Select your base city from the list of Saudi Arabian cities
+   - **Profile Picture** - Upload a photo to personalize your account
+
+> 💡 **Tip:** Your name initial appears as your avatar when no profile photo is set. Changes to your profile are reflected immediately across the platform.
 
 ---
 
@@ -154,11 +167,13 @@ Click on any equipment card to view detailed information:
    - Year of manufacture
    - Make and model
    - Serial number
-   - Operating hours
-   - Weight
+   - Operating hours (Hidden if 0)
+   - Weight (Hidden if 0)
    - Net power
    - Engine model
    - Maximum dig depth (for excavators)
+
+> 💡 **Note:** Technical specifications like **Operating Hours** and **Weight** only appear if the seller has provided this information. If these fields are left blank during listing creation, they will be hidden from the public view.
 
 3. **Pricing Information**
    - **Buy Price** - Purchase cost
@@ -202,12 +217,12 @@ Click on any equipment card to view detailed information:
    - **Listing Type** - For Sale, For Rent, or Both
 
 3. **Equipment Details**
-   - **Make*** - Manufacturer (e.g., Caterpillar)
+   - **Make*** - Manufacturer (e.g., Caterpillar). Select from suggested makes or enter a new one.
    - **Model*** - Model number (e.g., 320GC)
-   - **Year** - Manufacturing year
-   - **Hours** - Operating hours
-   - **Weight** - Equipment weight
-   - **Power** - Engine power rating
+   - **Year*** - Manufacturing year (Select from 1900 to 2026)
+   - **Hours** (Optional) - Operating hours. Leave blank or enter 0 if not applicable.
+   - **Weight** (Optional) - Equipment weight in kg.
+   - **Power** - Engine power rating (e.g., "150 HP" or "110 kW")
 
 4. **Pricing (SAR)**
    - **Buy Price** - Sale price (if for sale)
@@ -299,6 +314,71 @@ Toggle dark mode for comfortable viewing in low-light conditions:
 
 ---
 
+## User Journeys
+
+Heavy Hub is designed around specific user workflows to ensure a seamless experience for buyers, sellers, and administrators.
+
+### 💰 The Buyer/Renter Journey
+1. **Land on Search**: Start at the homepage with a full list of available equipment.
+2. **Apply Filters**: Use the sidebar to filter by category (e.g., Excavator), price range, or location.
+3. **Explore Results**: Scroll through equipment cards to see high-level pricing and verification badges.
+4. **Deep Dive**: Click a card to view the full specification list, gallery, and seller information.
+5. **Switch Context**: Use the language switcher to view details in a preferred language.
+
+### 🚜 The Seller/Dealer Journey
+1. **Authentication**: Sign up for a new account or log in to an existing one.
+2. **Setup Profile**: Access "Edit Profile" from the avatar menu to set contact details and a profile picture.
+3. **Start Listing**: Click **"List Item"** in the header to open the multi-step listing form.
+4. **Provide Specs**: Enter make, model, year, and optional hours/weight. Upload high-res photos.
+5. **Wait for Approval**: Submit the listing and view its "Pending" status in **My Fleet**.
+6. **Go Live**: Once an admin approves, the listing automatically moves to "Active" and appears in public search.
+
+### 🛡️ The Administrator Journey
+1. **Admin Access**: Log in with an administrator account to see the **"Admin Panel"** link in the header.
+2. **Queue Review**: Open the Admin Panel to see all listings currently in "Pending" status.
+3. **Verification**: Review listing details and images for quality and policy compliance.
+4. **Moderation**: Click **"Approve"** to publish the listing or **"Reject"** if it fails to meet platform standards.
+
+### ⚙️ The Global Experience
+- **Accessibility**: Toggle **Dark Mode** at any time for better visibility in different environments.
+- **Localization**: Change the language between **English, Arabic, or Urdu** to localize all UI text and currency formatting.
+- **Fleet Management**: Return to **My Fleet** to monitor performance or remove equipment that has been sold/rented.
+
+---
+
+## Technical Stack
+
+The Heavy Hub platform is built using modern, industry-standard technologies to ensure performance, scalability, and cross-platform compatibility.
+
+### Core Technologies
+
+| Technology | Usage |
+|------------|-------|
+| ⚛️ **React 19** | Modern UI library for building a fast, component-based user interface |
+| 🛡️ **TypeScript** | Static typing to ensure code quality and prevent runtime errors |
+| ⚡ **Vite** | Blazing fast build tool and development server |
+
+### Backend & Infrastructure (Firebase)
+
+| Service | Purpose |
+|---------|---------|
+| 🔐 **Firebase Auth** | Secure user registration and authentication flow |
+| 🔥 **Cloud Firestore** | NoSQL database for real-time equipment and user data storage |
+| ☁️ **Cloud Storage** | Secure storage and delivery of high-quality equipment images |
+| 🛡️ **Security Rules** | Granular access control for data integrity and user privacy |
+
+### Libraries & APIs
+
+| Library | Role |
+|---------|------|
+| 🌐 **i18next** | Comprehensive internationalization framework for multi-language support |
+| 🎨 **Tailwind CSS** | Utility-first CSS framework for custom, responsive designs |
+| 🅰️ **Google Fonts** | Inter typography for a clean, professional aesthetic |
+| 💎 **Material Symbols** | Modern icon system for intuitive navigation |
+| 📦 **ESM.sh** | Direct ESM module provider for React and other dependencies |
+
+---
+
 ## Frequently Asked Questions
 
 ### Account & Registration
@@ -319,6 +399,9 @@ Toggle dark mode for comfortable viewing in low-light conditions:
 
 **Q: How do I edit an existing listing?**
 > Access My Fleet, locate your listing, and update the status. Full editing features are coming soon.
+
+**Q: Are "Hours" and "Weight" mandatory for every listing?**
+> No, these fields are now optional. If you don't provide this information, the fields will be hidden on the equipment detail page to keep the listing clean.
 
 ### Technical
 

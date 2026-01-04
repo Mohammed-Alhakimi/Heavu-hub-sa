@@ -6,6 +6,7 @@ import { db, storage } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { EquipmentCategory } from '../../types';
 import { createListing } from '../../services/listings';
+import { SAUDI_CITIES } from '../../constants';
 
 interface CreateListingScreenProps {
     onSuccess: () => void;
@@ -29,7 +30,6 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
     // Pricing
     const [buyPrice, setBuyPrice] = useState<string>('');
     const [rentDaily, setRentDaily] = useState<string>('');
-    const [rentWeekly, setRentWeekly] = useState<string>('');
     const [rentMonthly, setRentMonthly] = useState<string>('');
 
     // Specs
@@ -38,7 +38,7 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
     const [power, setPower] = useState('');
 
     // Location
-    const [address, setAddress] = useState('');
+    const [city, setCity] = useState('');
 
     // Images
     const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -90,8 +90,69 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
             return;
         }
 
-        if (!title || !category || !make || !model) {
-            setError('Please fill in all required fields');
+        // Title validation: Max 32 chars, alphanumeric and spaces only
+        const titleRegex = /^[a-zA-Z0-9 ]*$/;
+        if (!titleRegex.test(title) || title.length > 32) {
+            setError('Title must be max 32 characters and contain only letters, numbers, and spaces');
+            return;
+        }
+
+        // Make validation: Max 32 chars, alphanumeric and spaces only
+        if (!titleRegex.test(make) || make.length > 32) {
+            setError('Make must be max 32 characters and contain only letters, numbers, and spaces');
+            return;
+        }
+
+        // Model validation: alphanumeric only
+        const alphanumericRegex = /^[a-zA-Z0-9]*$/;
+        if (!alphanumericRegex.test(model)) {
+            setError('Model must contain only letters and numbers');
+            return;
+        }
+
+        // Hours validation: optional positive integer (default to 0)
+        let hoursNum = 0;
+        if (hours) {
+            hoursNum = parseInt(hours);
+            if (isNaN(hoursNum) || hoursNum < 0) {
+                setError('Hours must be a positive integer');
+                return;
+            }
+        }
+
+        // Weight validation: optional positive integer (default to 0)
+        let weightNum = 0;
+        if (weight) {
+            if (!/^\d+$/.test(weight)) {
+                setError('Weight must be a positive integer');
+                return;
+            }
+            weightNum = parseInt(weight);
+        }
+
+        // Power validation: positive integer and letters
+        if (power && !/^[a-zA-Z0-9]*$/.test(power)) {
+            setError('Power must contain only letters and numbers');
+            return;
+        }
+
+        // Prices validation: positive integers
+        const validatePrice = (p: string) => (/^\d+$/.test(p) && parseInt(p) >= 0);
+        if (listingType === 'rent' || listingType === 'both') {
+            if (!rentDaily || !rentMonthly || !validatePrice(rentDaily) || !validatePrice(rentMonthly)) {
+                setError('Daily and Monthly rates are mandatory and must be positive integers');
+                return;
+            }
+        }
+        if (listingType === 'sale' || listingType === 'both') {
+            if (!buyPrice || !validatePrice(buyPrice)) {
+                setError('Buy price is required and must be a positive integer');
+                return;
+            }
+        }
+
+        if (!title || !category || !make || !model || !city) {
+            setError(t('Please fill in all required fields'));
             return;
         }
 
@@ -117,18 +178,17 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                 serialNumber: 'N/A', // Default or add field
 
                 // Flatten Price
-                buyPrice: buyPrice ? parseFloat(buyPrice) : 0,
-                rentDaily: rentDaily ? parseFloat(rentDaily) : 0,
-                rentWeekly: rentWeekly ? parseFloat(rentWeekly) : 0,
-                rentMonthly: rentMonthly ? parseFloat(rentMonthly) : 0,
+                buyPrice: buyPrice ? parseInt(buyPrice) : 0,
+                rentDaily: rentDaily ? parseInt(rentDaily) : 0,
+                rentMonthly: rentMonthly ? parseInt(rentMonthly) : 0,
 
                 // Flatten Specs
-                hours: hours ? parseInt(hours) : 0,
-                weight: weight || undefined,
+                hours: hoursNum,
+                weight: weightNum,
                 netPower: power || undefined,
 
                 // Location
-                location: address, // Map usage to string address for main view
+                location: city, // City ID
 
                 // Boolean flags (derive from listingType)
                 forSale: listingType === 'sale' || listingType === 'both',
@@ -136,15 +196,14 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                 type: listingType,
 
                 price: {
-                    buy: buyPrice ? parseFloat(buyPrice) : null,
-                    rentDaily: rentDaily ? parseFloat(rentDaily) : null,
-                    rentWeekly: rentWeekly ? parseFloat(rentWeekly) : null,
-                    rentMonthly: rentMonthly ? parseFloat(rentMonthly) : null,
+                    buy: buyPrice ? parseInt(buyPrice) : null,
+                    rentDaily: rentDaily ? parseInt(rentDaily) : null,
+                    rentMonthly: rentMonthly ? parseInt(rentMonthly) : null,
                     currency: 'SAR'
                 },
                 specs: {
-                    hours: hours ? parseInt(hours) : null,
-                    weight: weight || null,
+                    hours: hoursNum,
+                    weight: weightNum,
                     power: power || null
                 },
                 images: imageUrls,
@@ -211,6 +270,8 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
                                         placeholder="e.g., 2020 CAT 320 Excavator"
+                                        maxLength={32}
+                                        pattern="[a-zA-Z0-9 ]*"
                                         className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
                                         required
                                     />
@@ -276,6 +337,8 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                                         value={make}
                                         onChange={(e) => setMake(e.target.value)}
                                         placeholder="e.g., Caterpillar"
+                                        maxLength={32}
+                                        pattern="[a-zA-Z0-9 ]*"
                                         className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
                                         required
                                     />
@@ -289,6 +352,7 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                                         value={model}
                                         onChange={(e) => setModel(e.target.value)}
                                         placeholder="e.g., 320GC"
+                                        pattern="[a-zA-Z0-9]*"
                                         className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
                                         required
                                     />
@@ -297,14 +361,15 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                         Year
                                     </label>
-                                    <input
-                                        type="number"
+                                    <select
                                         value={year}
                                         onChange={(e) => setYear(parseInt(e.target.value))}
-                                        min={1980}
-                                        max={new Date().getFullYear() + 1}
                                         className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-                                    />
+                                    >
+                                        {Array.from({ length: new Date().getFullYear() - 1980 + 2 }, (_, i) => 1980 + i).slice().reverse().map(y => (
+                                            <option key={y} value={y}>{y}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -315,6 +380,8 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                                         value={hours}
                                         onChange={(e) => setHours(e.target.value)}
                                         placeholder="e.g., 3500"
+                                        min="0"
+                                        step="1"
                                         className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
                                     />
                                 </div>
@@ -323,10 +390,12 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                                         Weight
                                     </label>
                                     <input
-                                        type="text"
+                                        type="number"
                                         value={weight}
                                         onChange={(e) => setWeight(e.target.value)}
-                                        placeholder="e.g., 22,000 kg"
+                                        placeholder="e.g., 22000"
+                                        min="0"
+                                        step="1"
                                         className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
                                     />
                                 </div>
@@ -362,6 +431,8 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                                             value={buyPrice}
                                             onChange={(e) => setBuyPrice(e.target.value)}
                                             placeholder="0"
+                                            min="0"
+                                            step="1"
                                             className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
                                         />
                                     </div>
@@ -370,38 +441,32 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                                     <>
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                                Daily Rate
+                                                Daily Rate *
                                             </label>
                                             <input
                                                 type="number"
                                                 value={rentDaily}
                                                 onChange={(e) => setRentDaily(e.target.value)}
                                                 placeholder="0"
+                                                min="0"
+                                                step="1"
                                                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                                                required
                                             />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                                Weekly Rate
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={rentWeekly}
-                                                onChange={(e) => setRentWeekly(e.target.value)}
-                                                placeholder="0"
-                                                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                                Monthly Rate
+                                                Monthly Rate *
                                             </label>
                                             <input
                                                 type="number"
                                                 value={rentMonthly}
                                                 onChange={(e) => setRentMonthly(e.target.value)}
                                                 placeholder="0"
+                                                min="0"
+                                                step="1"
                                                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                                                required
                                             />
                                         </div>
                                     </>
@@ -413,19 +478,25 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                         <section>
                             <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">location_on</span>
-                                Location
+                                {t('location')}
                             </h2>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                    Address
+                                    {t('location')} *
                                 </label>
-                                <input
-                                    type="text"
-                                    value={address}
-                                    onChange={(e) => setAddress(e.target.value)}
-                                    placeholder="e.g., Riyadh, Saudi Arabia"
+                                <select
+                                    value={city}
+                                    onChange={(e) => setCity(e.target.value)}
                                     className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-                                />
+                                    required
+                                >
+                                    <option value="">{t('select_location') || 'Select Location'}</option>
+                                    {SAUDI_CITIES.map(cid => (
+                                        <option key={cid} value={cid}>
+                                            {t(`cities.${cid}`)}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                         </section>
 

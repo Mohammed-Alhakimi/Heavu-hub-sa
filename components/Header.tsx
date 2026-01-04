@@ -13,7 +13,9 @@ const Header: React.FC<HeaderProps> = ({
   onCreateListing,
   onMyFleetClick,
   onAdminPanelClick,
+  onProfileClick,
   user,
+  userProfile,
   userRole
 }) => {
   const { t } = useTranslation();
@@ -60,19 +62,29 @@ const Header: React.FC<HeaderProps> = ({
             )}
             <div className="relative group">
               <button className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden border-2 border-white dark:border-slate-600 shadow-sm flex items-center justify-center">
-                {user.photoURL ? (
-                  <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
+                {userProfile?.photoURL || user.photoURL ? (
+                  <img src={userProfile?.photoURL || user.photoURL} alt="User" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="font-bold text-slate-500 dark:text-slate-400">{user.email?.charAt(0).toUpperCase()}</span>
+                  <span className="font-bold text-slate-500 dark:text-slate-400">{userProfile?.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}</span>
                 )}
               </button>
               {/* Dropdown Menu */}
               <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-surface-dark rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right">
                 <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
-                  <p className="text-xs text-primary font-medium capitalize mt-0.5">{userRole || 'User'}</p>
+                  <p className="text-sm font-black text-slate-900 dark:text-white truncate">{userProfile?.displayName || 'User'}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">{user.email}</p>
+                  <p className="text-xs text-primary font-medium capitalize mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5">
+                    {userRole || 'User'}
+                  </p>
                 </div>
                 <div className="py-1">
+                  <button
+                    onClick={onProfileClick}
+                    className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">person_edit</span>
+                    Edit Profile
+                  </button>
                   {/* My Fleet - only for dealers and admins */}
                   {(userRole === 'dealer' || userRole === 'admin') && (
                     <button

@@ -5,6 +5,8 @@ import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import { updateListingStatus, deleteListing } from '../../services/listings';
+import { AccountService } from '../../services/AccountService';
+import { DeletionRequest } from '../../types';
 
 interface Listing {
     id: string;
@@ -36,13 +38,19 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [filter, setFilter] = useState<'pending' | 'all'>('pending');
+    const [activeTab, setActiveTab] = useState<'listings' | 'deletions'>('listings');
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [deletionRequests, setDeletionRequests] = useState<DeletionRequest[]>([]);
 
     useEffect(() => {
         if (userRole === 'admin') {
-            fetchListings();
+            if (activeTab === 'listings') {
+                fetchListings();
+            } else {
+                fetchDeletionRequests();
+            }
         }
-    }, [userRole, filter]);
+    }, [userRole, filter, activeTab]);
 
     const fetchListings = async () => {
         try {
@@ -120,6 +128,55 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
         }
     };
 
+    const fetchDeletionRequests = async () => {
+        try {
+            setLoading(true);
+            const requests = await AccountService.getDeletionRequests();
+            // Sort by createdAt descending
+            requests.sort((a, b) => {
+                const aTime = a.createdAt?.toDate?.() || new Date(0);
+                const bTime = b.createdAt?.toDate?.() || new Date(0);
+                return bTime.getTime() - aTime.getTime();
+            });
+            setDeletionRequests(requests);
+        } catch (err) {
+            console.error('Error fetching deletion requests:', err);
+            setError('Failed to load deletion requests');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleApproveDeletion = async (request: DeletionRequest) => {
+        if (!window.confirm(`Are you sure you want to APPROVE account deletion for ${request.userEmail}? This will confirm the request, but the actual data removal must be done via the Firebase Console for now.`)) {
+            return;
+        }
+
+        try {
+            setActionLoading(request.id!);
+            await AccountService.updateRequestStatus(request.id!, 'approved', currentUser!.uid);
+            setDeletionRequests(prev => prev.map(r => r.id === request.id ? { ...r, status: 'approved' as const } : r));
+        } catch (err) {
+            console.error('Error approving deletion:', err);
+            setError('Failed to approve deletion request');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleRejectDeletion = async (requestId: string) => {
+        try {
+            setActionLoading(requestId);
+            await AccountService.updateRequestStatus(requestId, 'rejected', currentUser!.uid);
+            setDeletionRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'rejected' as const } : r));
+        } catch (err) {
+            console.error('Error rejecting deletion:', err);
+            setError('Failed to reject deletion request');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'active': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
@@ -173,27 +230,51 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
                         </div>
                     </div>
 
-                    {/* Filter Toggle */}
+                    {/* Main Tabs */}
                     <div className="flex bg-white dark:bg-surface-dark rounded-xl p-1 shadow-sm border border-slate-200 dark:border-slate-700">
                         <button
-                            onClick={() => setFilter('pending')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'pending'
+                            onClick={() => setActiveTab('listings')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'listings'
                                 ? 'bg-primary text-slate-900'
                                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                                 }`}
                         >
-                            Pending
+                            Listings
                         </button>
                         <button
-                            onClick={() => setFilter('all')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'all'
+                            onClick={() => setActiveTab('deletions')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'deletions'
                                 ? 'bg-primary text-slate-900'
                                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                                 }`}
                         >
-                            All Listings
+                            Deletion Requests
                         </button>
                     </div>
+
+                    {/* Filter Toggle (only for listings) */}
+                    {activeTab === 'listings' && (
+                        <div className="flex bg-white dark:bg-surface-dark rounded-xl p-1 shadow-sm border border-slate-200 dark:border-slate-700">
+                            <button
+                                onClick={() => setFilter('pending')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'pending'
+                                    ? 'bg-primary text-slate-900'
+                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                    }`}
+                            >
+                                Pending
+                            </button>
+                            <button
+                                onClick={() => setFilter('all')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'all'
+                                    ? 'bg-primary text-slate-900'
+                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                    }`}
+                            >
+                                All Listings
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {error && (
@@ -206,144 +287,197 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
                     <div className="flex items-center justify-center py-20">
                         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                     </div>
-                ) : listings.length === 0 ? (
-                    <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-lg p-12 text-center">
-                        <span className="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">
-                            {filter === 'pending' ? 'check_circle' : 'inventory_2'}
-                        </span>
-                        <h2 className="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                            {filter === 'pending' ? 'No pending listings' : 'No listings found'}
-                        </h2>
-                        <p className="text-slate-500 dark:text-slate-400">
-                            {filter === 'pending'
-                                ? 'All listings have been reviewed'
-                                : 'There are no listings in the system yet'}
-                        </p>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {listings.map((listing) => (
-                            <div
-                                key={listing.id}
-                                className="bg-white dark:bg-surface-dark rounded-2xl shadow-lg overflow-hidden flex flex-col md:flex-row"
-                            >
-                                {/* Image */}
-                                <div className="w-full md:w-56 h-44 md:h-auto bg-slate-100 dark:bg-slate-800 flex-shrink-0">
-                                    {listing.images && listing.images.length > 0 ? (
-                                        <img
-                                            src={listing.images[0]}
-                                            alt={listing.title}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center">
-                                            <span className="material-symbols-outlined text-4xl text-slate-400">image</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Content */}
-                                <div className="flex-1 p-5">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div>
-                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                                                {listing.title}
-                                            </h3>
-                                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                                                {listing.year} {listing.make} {listing.model} • {listing.category}
-                                            </p>
-                                        </div>
-                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusColor(listing.status)}`}>
-                                            {listing.status}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex flex-wrap gap-4 mt-4 text-sm">
-                                        {listing.price.buy && (
-                                            <div>
-                                                <span className="text-slate-500 dark:text-slate-400">Buy: </span>
-                                                <span className="font-semibold text-slate-900 dark:text-white">
-                                                    {formatCurrency(listing.price.buy, i18n.language)}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {listing.price.rentDaily && (
-                                            <div>
-                                                <span className="text-slate-500 dark:text-slate-400">Daily: </span>
-                                                <span className="font-semibold text-slate-900 dark:text-white">
-                                                    {formatCurrency(listing.price.rentDaily, i18n.language)}
-                                                </span>
+                ) : activeTab === 'listings' ? (
+                    listings.length === 0 ? (
+                        <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-lg p-12 text-center">
+                            <span className="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">
+                                {filter === 'pending' ? 'check_circle' : 'inventory_2'}
+                            </span>
+                            <h2 className="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                                {filter === 'pending' ? 'No pending listings' : 'No listings found'}
+                            </h2>
+                            <p className="text-slate-500 dark:text-slate-400">
+                                {filter === 'pending'
+                                    ? 'All listings have been reviewed'
+                                    : 'There are no listings in the system yet'}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {listings.map((listing) => (
+                                <div
+                                    key={listing.id}
+                                    className="bg-white dark:bg-surface-dark rounded-2xl shadow-lg overflow-hidden flex flex-col md:flex-row"
+                                >
+                                    {/* Image */}
+                                    <div className="w-full md:w-56 h-44 md:h-auto bg-slate-100 dark:bg-slate-800 flex-shrink-0">
+                                        {listing.images && listing.images.length > 0 ? (
+                                            <img
+                                                src={listing.images[0]}
+                                                alt={listing.title}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-4xl text-slate-400">image</span>
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* Actions */}
-                                    <div className="flex items-center gap-3 mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
-                                        <span className="text-xs text-slate-400">Seller ID: {listing.sellerId.slice(0, 8)}...</span>
+                                    {/* Content */}
+                                    <div className="flex-1 p-5">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div>
+                                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                                                    {listing.title}
+                                                </h3>
+                                                <p className="text-sm text-slate-500 dark:text-slate-400">
+                                                    {listing.year} {listing.make} {listing.model} • {listing.category}
+                                                </p>
+                                            </div>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusColor(listing.status)}`}>
+                                                {listing.status}
+                                            </span>
+                                        </div>
 
-                                        <div className="ml-auto flex items-center gap-2">
-                                            <button
-                                                onClick={() => handleDelete(listing.id)}
-                                                disabled={actionLoading === listing.id}
-                                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                                                title="Delete Listing"
-                                            >
-                                                <span className="material-symbols-outlined text-[20px]">delete</span>
-                                            </button>
+                                        <div className="flex flex-wrap gap-4 mt-4 text-sm">
+                                            {listing.price.buy && (
+                                                <div>
+                                                    <span className="text-slate-500 dark:text-slate-400">Buy: </span>
+                                                    <span className="font-semibold text-slate-900 dark:text-white">
+                                                        {formatCurrency(listing.price.buy, i18n.language)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {listing.price.rentDaily && (
+                                                <div>
+                                                    <span className="text-slate-500 dark:text-slate-400">Daily: </span>
+                                                    <span className="font-semibold text-slate-900 dark:text-white">
+                                                        {formatCurrency(listing.price.rentDaily, i18n.language)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
 
-                                            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
+                                        {/* Actions */}
+                                        <div className="flex items-center gap-3 mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                            <span className="text-xs text-slate-400">Seller ID: {listing.sellerId.slice(0, 8)}...</span>
 
-                                            {listing.status === 'pending' && (
-                                                <>
-                                                    <button
-                                                        onClick={() => handleReject(listing.id)}
-                                                        disabled={actionLoading === listing.id}
-                                                        className="px-4 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 disabled:opacity-50"
-                                                    >
-                                                        <span className="material-symbols-outlined text-[18px]">close</span>
-                                                        Reject
-                                                    </button>
+                                            <div className="ml-auto flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleDelete(listing.id)}
+                                                    disabled={actionLoading === listing.id}
+                                                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                                    title="Delete Listing"
+                                                >
+                                                    <span className="material-symbols-outlined text-[20px]">delete</span>
+                                                </button>
+
+                                                <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
+                                                {listing.status === 'pending' && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleReject(listing.id)}
+                                                            disabled={actionLoading === listing.id}
+                                                            className="px-4 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 disabled:opacity-50"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[18px]">close</span>
+                                                            Reject
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleApprove(listing.id)}
+                                                            disabled={actionLoading === listing.id}
+                                                            className="px-4 py-2 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 disabled:opacity-50"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[18px]">check</span>
+                                                            Approve
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {listing.status === 'rejected' && (
                                                     <button
                                                         onClick={() => handleApprove(listing.id)}
                                                         disabled={actionLoading === listing.id}
                                                         className="px-4 py-2 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 disabled:opacity-50"
                                                     >
-                                                        <span className="material-symbols-outlined text-[18px]">check</span>
+                                                        <span className="material-symbols-outlined text-[18px]">undo</span>
                                                         Approve
                                                     </button>
-                                                </>
-                                            )}
-                                            {listing.status === 'rejected' && (
-                                                <button
-                                                    onClick={() => handleApprove(listing.id)}
-                                                    disabled={actionLoading === listing.id}
-                                                    className="px-4 py-2 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 disabled:opacity-50"
-                                                >
-                                                    <span className="material-symbols-outlined text-[18px]">undo</span>
-                                                    Approve
-                                                </button>
-                                            )}
-                                            {listing.status === 'active' && (
-                                                <div className="flex items-center gap-3">
-                                                    <button
-                                                        onClick={() => handleReject(listing.id)}
-                                                        disabled={actionLoading === listing.id}
-                                                        className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                                                    >
-                                                        Hide
-                                                    </button>
-                                                    <span className="text-sm text-green-600 flex items-center gap-1">
-                                                        <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                                                        Live
-                                                    </span>
-                                                </div>
-                                            )}
+                                                )}
+                                                {listing.status === 'active' && (
+                                                    <div className="flex items-center gap-3">
+                                                        <button
+                                                            onClick={() => handleReject(listing.id)}
+                                                            disabled={actionLoading === listing.id}
+                                                            className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                                                        >
+                                                            Hide
+                                                        </button>
+                                                        <span className="text-sm text-green-600 flex items-center gap-1">
+                                                            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                                                            Live
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )
+                ) : (
+                    deletionRequests.length === 0 ? (
+                        <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-lg p-12 text-center">
+                            <span className="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">person_remove</span>
+                            <h2 className="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-2">No deletion requests</h2>
+                            <p className="text-slate-500 dark:text-slate-400">There are no pending account deletion requests at this time.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {deletionRequests.map((req) => (
+                                <div key={req.id} className="bg-white dark:bg-surface-dark p-6 rounded-2xl shadow-lg flex items-center justify-between gap-6 border border-slate-200 dark:border-slate-800">
+                                    <div className="flex items-center gap-4">
+                                        <div className="size-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                                            <span className="material-symbols-outlined">person</span>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-slate-900 dark:text-white">{req.userEmail}</h3>
+                                            <p className="text-xs text-slate-500">ID: {req.userId}</p>
+                                            <p className="text-[10px] text-slate-400 mt-1">
+                                                Requested: {req.createdAt?.toDate?.().toLocaleString() || 'Recently'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        {req.status === 'pending' ? (
+                                            <>
+                                                <button
+                                                    onClick={() => handleRejectDeletion(req.id!)}
+                                                    disabled={actionLoading === req.id}
+                                                    className="px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                                                >
+                                                    Reject
+                                                </button>
+                                                <button
+                                                    onClick={() => handleApproveDeletion(req)}
+                                                    disabled={actionLoading === req.id}
+                                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-red-600/20 transition-all disabled:opacity-50"
+                                                >
+                                                    Approve Deletion
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <span className={`px-4 py-2 rounded-xl text-sm font-bold capitalize ${req.status === 'approved' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800'}`}>
+                                                {req.status}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )
                 )}
             </div>
         </div>

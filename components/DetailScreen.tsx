@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { EquipmentListing, Booking } from '../types';
+import { EquipmentListing } from '../types';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../utils/currency';
 import { SAUDI_CITIES } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { BookingService } from '../services/BookingService';
 import { Timestamp } from 'firebase/firestore';
+import CalendarPicker from './Bookings/CalendarPicker';
 
 interface DetailScreenProps {
   listing: EquipmentListing;
@@ -35,14 +36,19 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookedDates, setBookedDates] = useState<{ start: Date, end: Date }[]>([]);
 
+  // Fetch booked dates from Firebase
   React.useEffect(() => {
-    const fetchBookings = async () => {
+    const fetchBookedDates = async () => {
       if (listing.id) {
-        const dates = await BookingService.getBookedDates(listing.id);
-        setBookedDates(dates);
+        try {
+          const dates = await BookingService.getBookedDates(listing.id);
+          setBookedDates(dates);
+        } catch (err) {
+          console.error('Error fetching booked dates:', err);
+        }
       }
     };
-    fetchBookings();
+    fetchBookedDates();
   }, [listing.id]);
 
   React.useEffect(() => {
@@ -94,6 +100,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
     setBookingError('');
 
     try {
+      // Check for booking conflicts
       const hasConflict = await BookingService.checkConflict(listing.id, start, end);
       if (hasConflict) {
         setBookingError('These dates are already booked. Please select other dates.');
@@ -101,16 +108,27 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
         return;
       }
 
+      // Create booking with all required fields
       await BookingService.createBooking({
         listingId: listing.id,
+        listingTitle: listing.name || listing.title || '',
         userId: currentUser!.uid,
         sellerId: listing.sellerId || '',
+        renterName: profile?.displayName || '',
+        renterPhone: profile?.phoneNumber || '',
         startDate: Timestamp.fromDate(start),
         endDate: Timestamp.fromDate(end),
         totalPrice: totalPrice
       });
 
+      // Refresh booked dates
+      const updatedDates = await BookingService.getBookedDates(listing.id);
+      setBookedDates(updatedDates);
+
       setBookingSuccess(true);
+      setStartDate('');
+      setEndDate('');
+      setTotalPrice(0);
       setTimeout(() => setBookingSuccess(false), 5000);
     } catch (err: any) {
       console.error('Error creating booking:', err);
@@ -449,36 +467,38 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
                   </div>
 
                   <div className="flex flex-col gap-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('start_date')}</label>
-                        <input
-                          className="w-full rounded-lg border-slate-200 dark:border-slate-600 bg-transparent text-sm py-2 pl-3 focus:ring-primary focus:border-primary outline-none disabled:opacity-50"
-                          type="date"
-                          min={today}
-                          max={maxDate}
-                          value={startDate}
-                          onChange={(e) => {
-                            setStartDate(e.target.value);
-                            if (endDate && new Date(e.target.value) >= new Date(endDate)) {
-                              setEndDate('');
-                            }
-                          }}
-                          disabled={!isAvailable || isOwner}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('end_date')}</label>
-                        <input
-                          className="w-full rounded-lg border-slate-200 dark:border-slate-600 bg-transparent text-sm py-2 pl-3 focus:ring-primary focus:border-primary outline-none disabled:opacity-50"
-                          type="date"
-                          min={startDate ? new Date(new Date(startDate).getTime() + 86400000).toISOString().split('T')[0] : today}
-                          max={maxDate}
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          disabled={!startDate || !isAvailable || isOwner}
-                        />
-                      </div>
+                    <div className="flex flex-col gap-4">
+                      {/* Integrated Static Calendar */}
+                      <CalendarPicker
+                        startDate={startDate}
+                        endDate={endDate}
+                        bookedDates={bookedDates}
+                        minDate={today}
+                        maxDate={maxDate}
+                        onChange={(start, end) => {
+                          setStartDate(start);
+                          setEndDate(end);
+                        }}
+                        onClose={() => { }}
+                      />
+
+                      {/* Selected Range Summary */}
+                      {(startDate || endDate) && (
+                        <div className="grid grid-cols-2 gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 animate-fadeIn">
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('start_date')}</label>
+                            <div className="text-sm font-bold text-slate-900 dark:text-white">
+                              {startDate ? new Date(startDate).toLocaleDateString(i18n.language) : '—'}
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1 border-l border-slate-100 dark:border-slate-800 pl-3">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('end_date')}</label>
+                            <div className="text-sm font-bold text-slate-900 dark:text-white">
+                              {endDate ? new Date(endDate).toLocaleDateString(i18n.language) : '—'}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Calendar visualizer placeholder */}

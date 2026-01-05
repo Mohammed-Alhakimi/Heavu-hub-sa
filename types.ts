@@ -65,11 +65,14 @@ export interface UserProfile {
 export interface Booking {
   id?: string;
   listingId: string;
+  listingTitle: string;
   startDate: any; // Firestore Timestamp or Date ISO string
   endDate: any;
   totalPrice: number;
   userId: string;
   sellerId: string;
+  renterName: string;
+  renterPhone: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   createdAt: any;
   updatedAt: any;

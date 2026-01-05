@@ -5,14 +5,19 @@ import {
     query,
     where,
     getDocs,
+    doc,
+    updateDoc,
     serverTimestamp,
-    Timestamp
+    Timestamp,
+    orderBy
 } from 'firebase/firestore';
 import { Booking } from '../types';
 
 export const BookingService = {
     /**
      * Creates a new booking in Firestore
+     * @param booking - Booking data (without id, timestamps, and status)
+     * @returns The document reference of the created booking
      */
     async createBooking(booking: Omit<Booking, 'id' | 'createdAt' | 'updatedAt' | 'status'>) {
         return addDoc(collection(db, 'bookings'), {
@@ -24,33 +29,28 @@ export const BookingService = {
     },
 
     /**
-     * Checks if there are any conflicting bookings for a given time range
+     * Checks if there are any conflicting bookings for a given listing and date range
+     * A conflict exists if: (newStart < existingEnd) AND (existingStart < newEnd)
      */
     async checkConflict(listingId: string, startDate: Date, endDate: Date): Promise<boolean> {
-        const bookingsRef = collection(db, 'bookings');
-
-        // Query for potentially overlapping bookings
-        // Overlap conditions:
-        // (S1 < E2) AND (S2 < E1)
         const q = query(
-            bookingsRef,
+            collection(db, 'bookings'),
             where('listingId', '==', listingId),
             where('status', 'in', ['pending', 'confirmed'])
         );
 
-        const querySnapshot = await getDocs(q);
+        const snapshot = await getDocs(q);
 
-        return querySnapshot.docs.some(doc => {
+        return snapshot.docs.some(doc => {
             const data = doc.data();
-            const bStart = (data.startDate as Timestamp).toDate();
-            const bEnd = (data.endDate as Timestamp).toDate();
-
-            return (startDate < bEnd && bStart < endDate);
+            const existingStart = (data.startDate as Timestamp).toDate();
+            const existingEnd = (data.endDate as Timestamp).toDate();
+            return startDate < existingEnd && existingStart < endDate;
         });
     },
 
     /**
-     * Fetches all non-cancelled bookings for a listing to visualize on calendar
+     * Gets all booked date ranges for a listing (to disable on calendar)
      */
     async getBookedDates(listingId: string) {
         const q = query(
@@ -63,5 +63,62 @@ export const BookingService = {
             start: (doc.data().startDate as Timestamp).toDate(),
             end: (doc.data().endDate as Timestamp).toDate()
         }));
+    },
+
+    /**
+     * Gets all bookings for a specific user (renter)
+     */
+    async getUserBookings(userId: string): Promise<Booking[]> {
+        const q = query(
+            collection(db, 'bookings'),
+            where('userId', '==', userId),
+            orderBy('createdAt', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Booking));
+    },
+
+    /**
+     * Gets all bookings for a seller's equipment
+     */
+    async getSellerBookings(sellerId: string): Promise<Booking[]> {
+        const q = query(
+            collection(db, 'bookings'),
+            where('sellerId', '==', sellerId),
+            orderBy('createdAt', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Booking));
+    },
+
+    /**
+     * Updates the status of a booking
+     */
+    async updateStatus(bookingId: string, status: Booking['status']) {
+        const bookingRef = doc(db, 'bookings', bookingId);
+        return updateDoc(bookingRef, {
+            status,
+            updatedAt: serverTimestamp()
+        });
+    },
+
+    /**
+     * Cancels a booking
+     */
+    async cancelBooking(bookingId: string) {
+        return this.updateStatus(bookingId, 'cancelled');
+    },
+
+    /**
+     * Confirms a booking (seller action)
+     */
+    async confirmBooking(bookingId: string) {
+        return this.updateStatus(bookingId, 'confirmed');
     }
 };

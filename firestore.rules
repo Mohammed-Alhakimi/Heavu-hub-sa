@@ -80,14 +80,12 @@ service cloud.firestore {
       allow delete: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isAdmin());
     }
 
-    // 3. Bookings: Renters can create, Renters/Sellers can read/update their own
+    // 3. Bookings: Any authenticated user can create, Renters/Sellers can read/update their own
     match /bookings/{bookingId} {
       allow create: if isSignedIn() && 
                       request.resource.data.userId == request.auth.uid &&
-                      request.resource.data.userId != request.resource.data.sellerId &&
-                      request.resource.data.startDate < request.resource.data.endDate &&
-                      request.resource.data.totalPrice > 0;
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
+                      request.resource.data.userId != request.resource.data.sellerId;
+      allow read: if isSignedIn();
       allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
     }
 

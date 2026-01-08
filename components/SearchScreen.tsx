@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EquipmentListing } from '../types';
+import { EquipmentListing, EquipmentCategory } from '../types';
 import { getListings, getListingsCount } from '../services/listings';
 import { formatCurrency } from '../utils/currency';
 import { SAUDI_CITIES } from '../constants';
@@ -15,7 +15,7 @@ interface SearchScreenProps {
 
 const SearchScreen: React.FC<SearchScreenProps> = ({ onListingClick, isAuthenticated = false, onRestrictedAction = () => { } }) => {
   const [intent, setIntent] = useState<'buy' | 'rent'>('buy');
-  const [activeCategory, setActiveCategory] = useState<string>('Excavators');
+  const [activeCategory, setActiveCategory] = useState<string>('All Categories');
   const { t, i18n } = useTranslation();
 
   const [listings, setListings] = useState<EquipmentListing[]>([]);
@@ -108,12 +108,12 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ onListingClick, isAuthentic
               onChange={(e) => setActiveCategory(e.target.value)}
               className="w-full pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer outline-none"
             >
-              <option>All Categories</option>
-              <option>Excavators</option>
-              <option>Bulldozers</option>
-              <option>Cranes</option>
-              <option>Loaders</option>
-              <option>Lifts</option>
+              <option value="All Categories">{t('all_categories')}</option>
+              {Object.entries(EquipmentCategory).map(([key, value]) => (
+                <option key={key} value={value}>
+                  {t(`cat_${key.toLowerCase()}`)}
+                </option>
+              ))}
             </select>
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none material-symbols-outlined">expand_more</span>
           </div>

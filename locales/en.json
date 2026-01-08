@@ -14,6 +14,7 @@
     "apply_filters": "Apply Filters",
     "clear_all": "Clear All",
     "reset": "Reset",
+    "select_category": "Select Category",
     "select_location": "Select Location",
     "all_locations": "All Locations",
     "buy": "Buy",
@@ -64,6 +65,45 @@
     "make_offer": "Make an Offer",
     "message_seller": "Message Seller",
     "protection_stub": "Heavy Hub Protection covers your purchase against material misrepresentation. Rent with confidence.",
+    "cat_crawler_dozer": "Crawler Dozer",
+    "cat_articulated_dump_truck": "Articulated Dump Truck",
+    "cat_rigid_dump_truck": "Rigid Dump Truck",
+    "cat_off_road_tanker": "Off-Road Tanker",
+    "cat_mini_excavator": "Mini Excavator",
+    "cat_medium_excavator": "Medium Excavator",
+    "cat_large_excavator": "Large Excavator",
+    "cat_long_boom_excavator": "Long-Boom Excavator",
+    "cat_wheel_excavator": "Wheel Excavator",
+    "cat_wheel_loader": "Wheel Loader",
+    "cat_crawler_loader": "Crawler Loader",
+    "cat_backhoe_loader": "Backhoe Loader",
+    "cat_skid_steer_loader": "Skid Steer Loader",
+    "cat_single_drum_roller": "Single-Drum Roller",
+    "cat_double_drum_roller": "Double-Drum Roller",
+    "cat_plate_compactor": "Plate Compactor",
+    "cat_crawler_crane": "Crawler Crane",
+    "cat_mobile_crane": "Mobile Crane",
+    "cat_scissor_lift": "Scissor Lift",
+    "cat_boom_lift": "Boom Lift",
+    "cat_forklift": "Forklift",
+    "cat_crusher": "Crusher",
+    "cat_screener": "Screener",
+    "cat_miller": "Miller",
+    "cat_paver": "Paver",
+    "cat_grader": "Grader",
+    "cat_drill_rig": "Drill Rig",
+    "cat_sheet_piling_rig": "Sheet Piling Rig",
+    "cat_tipper_dumper_truck": "Tipper/Dumper Truck",
+    "cat_concrete_mixer_truck": "Concrete Mixer Truck",
+    "cat_concrete_pump_truck": "Concrete Pump Truck",
+    "cat_water_truck": "Water Truck",
+    "cat_pneumatic_roller": "Pneumatic Roller",
+    "cat_telescopic_handler": "Telescopic Handler",
+    "cat_excavator_general": "Excavator (General)",
+    "cat_bulldozer_general": "Bulldozer (General)",
+    "cat_loader_general": "Loader (General)",
+    "cat_lift_general": "Lift (General)",
+    "cat_dump_truck_general": "Dump Truck (General)",
     "cat_excavator": "Excavator",
     "cat_bulldozer": "Bulldozer",
     "cat_crane": "Mobile Crane",
@@ -96,5 +136,39 @@
         "taif": "Taif",
         "hofuf": "Hofuf",
         "yanbu": "Yanbu"
+    },
+    "footer": {
+        "description": "Heavy Hub is Saudi Arabia's premier destination for heavy equipment rental and sales. We provide easy and reliable access to thousands of excavators, cranes, and loaders from top suppliers. Save on costs, rent only the equipment you need, and enjoy full protection in every transaction.",
+        "join_us": "Join our followers on",
+        "sections": {
+            "rent": {
+                "title": "Equipment Rental",
+                "browse": "Browse All Equipment",
+                "how_it_works": "How Heavy Hub Works?",
+                "request_quote": "Request a Quote (RFQ)",
+                "support": "Technical Support",
+                "blog": "Machinery Blog",
+                "coming_soon": "Coming Soon"
+            },
+            "about": {
+                "title": "About Heavy Hub",
+                "about_us": "About the Platform",
+                "faq": "FAQ",
+                "privacy": "Privacy Policy",
+                "terms": "Terms of Service"
+            },
+            "my_products": {
+                "title": "My Fleet",
+                "list": "Manage My Fleet",
+                "requests": "Rental Requests",
+                "bookings": "My Bookings",
+                "wishlist": "Wishlist"
+            }
+        },
+        "actions": {
+            "add_product": "Add New Listing",
+            "whatsapp": "Contact via WhatsApp"
+        },
+        "copyright": "All rights reserved to Heavy Hub @ 2025"
     }
 }

@@ -46,16 +46,15 @@ service cloud.firestore {
     match /listings/{listingId} {
       // Helper for listing validation
       function isValidListing(data) {
-        return data.title is string && data.title.size() <= 32 && data.title.matches('^[a-zA-Z0-9 ]*$') &&
-               data.make is string && data.make.size() <= 32 && data.make.matches('^[a-zA-Z0-9 ]*$') &&
-               data.model is string && data.model.matches('^[a-zA-Z0-9]*$') &&
+        return (data.name is string || data.title is string) &&
+               data.make is string &&
+               data.model is string &&
                data.year is int &&
                data.hours is int && data.hours >= 0 &&
-               (!('weight' in data) || data.weight == null || (data.weight is int && data.weight >= 0)) &&
-               (!('netPower' in data) || data.netPower == null || (data.netPower is string && data.netPower.matches('^[a-zA-Z0-9]*$'))) &&
+               (!('weight' in data) || data.weight == null || data.weight is int || data.weight is float) &&
+               (!('netPower' in data) || data.netPower == null || data.netPower is string) &&
                data.buyPrice is int && data.buyPrice >= 0 &&
                data.rentDaily is int && data.rentDaily >= 0 &&
-               data.rentWeekly is int && data.rentWeekly >= 0 &&
                data.rentMonthly is int && data.rentMonthly >= 0;
       }
 

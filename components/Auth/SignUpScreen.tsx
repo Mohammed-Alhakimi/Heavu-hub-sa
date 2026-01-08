@@ -3,6 +3,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../../firebase'; // Adjust path if needed
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { formatPhoneNumber, isValidPhoneNumber } from '../../utils/phone';
+import LegalModals from '../LegalModals';
 
 interface SignUpScreenProps {
     onNavigateToLogin: () => void;
@@ -18,6 +19,9 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateToLogin, onSignUp
     const [phoneNumber, setPhoneNumber] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [agreedToTerms, setAgreedToTerms] = useState(false);
+    const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+    const [showTermsModal, setShowTermsModal] = useState(false);
 
     const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,6 +32,10 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateToLogin, onSignUp
 
         if (!isValidPhoneNumber(phoneNumber)) {
             return setError('Please enter a valid Saudi phone number starting with +966 5');
+        }
+
+        if (!agreedToTerms) {
+            return setError('You must agree to the Privacy Policy and Terms and Conditions');
         }
 
         try {
@@ -171,6 +179,36 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateToLogin, onSignUp
                             </div>
                         </div>
 
+                        {/* Legal Consent Checkbox */}
+                        <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+                            <input
+                                type="checkbox"
+                                id="legal-consent"
+                                checked={agreedToTerms}
+                                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                                className="mt-1 size-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
+                            />
+                            <label htmlFor="legal-consent" className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed cursor-pointer selection:bg-transparent">
+                                I have read and agree to the{' '}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPrivacyModal(true)}
+                                    className="text-primary font-bold hover:underline"
+                                >
+                                    Privacy Policy
+                                </button>
+                                {' '}and{' '}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTermsModal(true)}
+                                    className="text-primary font-bold hover:underline"
+                                >
+                                    Terms and Conditions
+                                </button>
+                                .
+                            </label>
+                        </div>
+
                         <div className="pt-2">
                             <button
                                 type="submit"
@@ -190,6 +228,18 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateToLogin, onSignUp
                     </p>
                 </div>
             </div>
+
+            {/* Legal Modals */}
+            <LegalModals
+                isOpen={showPrivacyModal}
+                type="privacy"
+                onClose={() => setShowPrivacyModal(false)}
+            />
+            <LegalModals
+                isOpen={showTermsModal}
+                type="terms"
+                onClose={() => setShowTermsModal(false)}
+            />
         </div>
     );
 };

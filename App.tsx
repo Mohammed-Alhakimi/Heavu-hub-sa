@@ -10,6 +10,9 @@ import CreateListingScreen from './components/Listings/CreateListingScreen';
 import MyFleetScreen from './components/Listings/MyFleetScreen';
 import AdminPanelScreen from './components/Admin/AdminPanelScreen';
 import ProfileEditScreen from './components/ProfileEditScreen';
+import HowItWorksScreen from './components/HowItWorksScreen';
+import Footer from './components/Footer';
+import LegalModals from './components/LegalModals';
 import { EquipmentListing, ViewState } from './types';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -17,6 +20,7 @@ const AppContent: React.FC = () => {
   const [view, setView] = useState<ViewState>('search');
   const [selectedListing, setSelectedListing] = useState<EquipmentListing | null>(null);
   const [darkMode, setDarkMode] = useState(false);
+  const [activeModal, setActiveModal] = useState<'about' | 'faq' | 'privacy' | 'terms' | null>(null);
   const { t } = useTranslation();
   const { currentUser, profile, userRole, logout } = useAuth();
 
@@ -96,6 +100,18 @@ const AppContent: React.FC = () => {
     return <div className="page-transition"><ProfileEditScreen onBack={() => setView('search')} onSuccess={() => setView('search')} /></div>;
   }
 
+  if (view === 'how-it-works') {
+    return (
+      <div className="page-transition">
+        <HowItWorksScreen
+          onBack={() => setView('search')}
+          onCreateListing={handleCreateListingClick}
+          onBrowseMachinery={() => setView('search')}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white dark:bg-black transition-colors duration-300 font-sans text-slate-900 dark:text-slate-100">
       <Header
@@ -136,21 +152,21 @@ const AppContent: React.FC = () => {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-white dark:bg-surface-dark border-t border-slate-200 dark:border-slate-800 py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="Heavy Hub" className="h-8 w-auto" />
-          </div>
-          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-sm text-slate-500">
-            <span>Copyright © HeavyHub. All rights reserved.</span>
-            <div className="flex gap-4">
-              <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-primary transition-colors">Terms</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer
+        userRole={userRole}
+        onCreateListing={handleCreateListingClick}
+        onHowItWorksClick={() => setView('how-it-works')}
+        onAboutClick={() => setActiveModal('about')}
+        onFAQClick={() => setActiveModal('faq')}
+        onPrivacyClick={() => setActiveModal('privacy')}
+        onTermsClick={() => setActiveModal('terms')}
+      />
+
+      <LegalModals
+        isOpen={activeModal !== null}
+        onClose={() => setActiveModal(null)}
+        type={activeModal || 'privacy'}
+      />
     </div>
   );
 };

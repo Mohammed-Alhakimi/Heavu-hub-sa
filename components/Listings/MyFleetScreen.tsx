@@ -4,6 +4,7 @@ import { collection, query, where, getDocs, deleteDoc, doc, updateDoc } from 'fi
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
+import { BookingService } from '../../services/BookingService';
 
 interface Listing {
     id: string;
@@ -83,6 +84,17 @@ const MyFleetScreen: React.FC<MyFleetScreenProps> = ({ onBack, onCreateListing }
 
     const handleDelete = async (listingId: string) => {
         try {
+            setError('');
+            // 1. Check for active bookings before allowing deletion
+            const bookedDates = await BookingService.getBookedDates(listingId);
+
+            if (bookedDates.length > 0) {
+                setError('This listing has active bookings and cannot be deleted. Please contact an admin for assistance.');
+                setDeleteConfirm(null);
+                return;
+            }
+
+            // 2. Only delete if no bookings found
             await deleteDoc(doc(db, 'listings', listingId));
             setListings(prev => prev.filter(l => l.id !== listingId));
             setDeleteConfirm(null);

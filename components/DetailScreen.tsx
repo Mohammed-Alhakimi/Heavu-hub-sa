@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { EquipmentListing } from '../types';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../utils/currency';
@@ -36,8 +36,24 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookedDates, setBookedDates] = useState<{ start: Date, end: Date }[]>([]);
 
+  // Memoized and refined booked dates for display
+  const displayBookedDates = useMemo(() => {
+    if (!bookedDates || bookedDates.length === 0) return [];
+
+    // 1. Sort chronologically
+    const sorted = [...bookedDates].sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    // 2. Remove identical duplicates (same start and end time)
+    return sorted.filter((date, index, self) =>
+      index === self.findIndex((d) => (
+        d.start.getTime() === date.start.getTime() &&
+        d.end.getTime() === date.end.getTime()
+      ))
+    );
+  }, [bookedDates]);
+
   // Fetch booked dates from Firebase
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchBookedDates = async () => {
       if (listing.id) {
         try {
@@ -51,7 +67,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
     fetchBookedDates();
   }, [listing.id]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
@@ -510,13 +526,13 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
                         </div>
                       </div>
                       <div className="text-[10px] text-slate-500">
-                        {bookedDates.length > 0 ? (
+                        {displayBookedDates.length > 0 ? (
                           <div className="space-y-1">
-                            {bookedDates.map((d, i) => (
+                            {displayBookedDates.map((d, i) => (
                               <div key={i} className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1">
-                                <span>{d.start.toLocaleDateString()}</span>
-                                <span>to</span>
-                                <span>{d.end.toLocaleDateString()}</span>
+                                <span>{d.start.toLocaleDateString(i18n.language)}</span>
+                                <span className="text-[8px] text-slate-300 dark:text-slate-600 uppercase font-bold tracking-widest">{t('to') || 'to'}</span>
+                                <span>{d.end.toLocaleDateString(i18n.language)}</span>
                               </div>
                             ))}
                           </div>
@@ -597,7 +613,7 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ listing, onBack, isAuthenti
           </div>
         </div>
       </div>
-    </div >
+    </div>
   );
 };
 

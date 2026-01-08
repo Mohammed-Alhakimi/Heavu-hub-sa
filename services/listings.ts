@@ -35,7 +35,6 @@ export const getListings = async (
         let q = query(
             collection(db, LISTINGS_COLLECTION),
             where('status', '==', 'active'),
-            orderBy('approvedAt', 'desc'),
             limit(pageSize)
         );
 
@@ -43,7 +42,6 @@ export const getListings = async (
             q = query(
                 collection(db, LISTINGS_COLLECTION),
                 where('status', '==', 'active'),
-                orderBy('approvedAt', 'desc'),
                 startAfter(lastVisible),
                 limit(pageSize)
             );

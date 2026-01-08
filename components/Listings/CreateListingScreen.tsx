@@ -298,9 +298,11 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({ onSuccess, on
                                         className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
                                         required
                                     >
-                                        <option value="">Select category</option>
-                                        {categories.map(cat => (
-                                            <option key={cat} value={cat}>{cat}</option>
+                                        <option value="">{t('select_category') || 'Select category'}</option>
+                                        {Object.entries(EquipmentCategory).map(([key, value]) => (
+                                            <option key={key} value={value}>
+                                                {t(`cat_${key.toLowerCase()}`)}
+                                            </option>
                                         ))}
                                     </select>
                                 </div>

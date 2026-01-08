@@ -1,95 +1,32 @@
-const {setGlobalOptions} = require("firebase-functions");
-const {onDocumentCreated} = require("firebase-functions/v2/firestore");
-const {initializeApp} = require("firebase-admin/app");
-const {getFirestore} = require("firebase-admin/firestore");
-const axios = require("axios");
-
-initializeApp();
-const db = getFirestore();
-
-setGlobalOptions({maxInstances: 10});
-
-const MAKE_WEBHOOK_URL =
-  "https://hook.eu1.make.com/d9mg1yzruihaa2w8i4cyaesomfs6apm9";
-
 /**
- * Enriches and sends booking data to Make.com.
- * @param {object} event The Firestore event.
- * @return {Promise<void>}
+ * Import function triggers from their respective submodules:
+ *
+ * const {onCall} = require("firebase-functions/v2/https");
+ * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
+ *
+ * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
-async function handleNewBooking(event) {
-  const bookingId = event.params.bookingId;
-  const bookingData = event.data?.data();
 
-  if (!bookingData) {
-    console.error("No data associated with the event");
-    return;
-  }
+const { setGlobalOptions } = require("firebase-functions");
+const { onRequest } = require("firebase-functions/https");
+const logger = require("firebase-functions/logger");
 
-  console.log(`New booking created: ${bookingId}`);
+// For cost control, you can set the maximum number of containers that can be
+// running at the same time. This helps mitigate the impact of unexpected
+// traffic spikes by instead downgrading performance. This limit is a
+// per-function limit. You can override the limit for each function using the
+// `maxInstances` option in the function's options, e.g.
+// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
+// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
+// functions should each use functions.runWith({ maxInstances: 10 }) instead.
+// In the v1 API, each function can only serve one request per container, so
+// this will be the maximum concurrent request count.
+setGlobalOptions({ maxInstances: 10 });
 
-  try {
-    const equipmentId = bookingData.listingId || bookingData.equipmentId;
-    if (!equipmentId) {
-      console.error(`Booking ${bookingId} is missing listingId/equipmentId`);
-      return;
-    }
+// Create and deploy your first functions
+// https://firebase.google.com/docs/functions/get-started
 
-    const eRef = db.collection("listings").doc(equipmentId);
-    const equipmentDoc = await eRef.get();
-    const equipmentData = equipmentDoc.exists ? equipmentDoc.data() : {};
-
-    let customerData = {};
-    const userId = bookingData.userId || bookingData.renterId;
-    if (userId) {
-      const uRef = db.collection("users").doc(userId);
-      const userDoc = await uRef.get();
-      if (userDoc.exists) {
-        customerData = userDoc.data();
-      }
-    }
-
-    const startDate = bookingData.startDate?.toDate ?
-      bookingData.startDate.toDate() : new Date(bookingData.startDate);
-    const endDate = bookingData.endDate?.toDate ?
-      bookingData.endDate.toDate() : new Date(bookingData.endDate);
-
-    const payload = {
-      bookingId: bookingId,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      totalPrice: bookingData.totalPrice || 0,
-      status: bookingData.status || "pending",
-      equipmentId: equipmentId,
-      equipmentName: equipmentData.name ||
-        equipmentData.title ||
-        bookingData.listingTitle ||
-        "Unknown Equipment",
-      supplierId: bookingData.sellerId || equipmentData.sellerId,
-      customerId: userId,
-      customerName: customerData.displayName ||
-        bookingData.renterName ||
-        "Unknown Customer",
-      customerEmail: customerData.email || "",
-      customerPhone: customerData.phoneNumber ||
-        bookingData.renterPhone || "",
-      createdAt: new Date().toISOString(),
-    };
-
-    console.log(`Sending payload to Make.com for booking ${bookingId}`);
-    const response = await axios.post(MAKE_WEBHOOK_URL, payload, {
-      headers: {"Content-Type": "application/json"},
-      timeout: 10000,
-    });
-
-    console.log(`Successfully sent booking ${bookingId} ` +
-      `to Make.com. Status: ${response.status}`);
-  } catch (error) {
-    console.error(`Error processing booking ${bookingId}:`, error.message);
-  }
-}
-
-exports.onNewBookingCreated = onDocumentCreated(
-    "bookings/{bookingId}",
-    handleNewBooking,
-);
+// exports.helloWorld = onRequest((request, response) => {
+//   logger.info("Hello logs!", {structuredData: true});
+//   response.send("Hello from Firebase!");
+// });

@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { collection, query, where, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
+import { db, storage } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
-import { updateListingStatus, deleteListing } from '../../services/listings';
+import { updateListingStatus, deleteListing, getListingById } from '../../services/listings';
+import { BookingService } from '../../services/BookingService';
 import { AccountService } from '../../services/AccountService';
-import { DeletionRequest } from '../../types';
+import { DeletionRequest, Booking, EquipmentListing } from '../../types';
+
+interface BookingWithSeller extends Booking {
+    sellerName?: string;
+    sellerPhone?: string;
+}
 
 interface Listing {
     id: string;
@@ -29,28 +36,33 @@ interface Listing {
 
 interface AdminPanelScreenProps {
     onBack: () => void;
+    onListingClick?: (listing: EquipmentListing) => void;
 }
 
-const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
+const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack, onListingClick }) => {
     const { t, i18n } = useTranslation();
     const { currentUser, userRole } = useAuth();
     const [listings, setListings] = useState<Listing[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [filter, setFilter] = useState<'pending' | 'all'>('pending');
-    const [activeTab, setActiveTab] = useState<'listings' | 'deletions'>('listings');
+    const [activeTab, setActiveTab] = useState<'listings' | 'deletions' | 'bookings'>('listings');
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [deletionRequests, setDeletionRequests] = useState<DeletionRequest[]>([]);
+    const [bookings, setBookings] = useState<BookingWithSeller[]>([]);
+    const [bookingFilter, setBookingFilter] = useState<'active' | 'all'>('active');
 
     useEffect(() => {
         if (userRole === 'admin') {
             if (activeTab === 'listings') {
                 fetchListings();
-            } else {
+            } else if (activeTab === 'deletions') {
                 fetchDeletionRequests();
+            } else if (activeTab === 'bookings') {
+                fetchBookings();
             }
         }
-    }, [userRole, filter, activeTab]);
+    }, [userRole, filter, activeTab, bookingFilter]);
 
     const fetchListings = async () => {
         try {
@@ -112,17 +124,84 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
     };
 
     const handleDelete = async (listingId: string) => {
-        if (!window.confirm('Are you sure you want to permanently delete this listing? This action cannot be undone.')) {
-            return;
-        }
-
         try {
             setActionLoading(listingId);
+
+            // Step 1: Fetch listing data to get images
+            const listing = await getListingById(listingId);
+            if (!listing) {
+                setError('Listing not found');
+                setActionLoading(null);
+                return;
+            }
+
+            // Step 2: Check for active bookings
+            const activeBookingsCount = await BookingService.getActiveBookingsForListing(listingId);
+
+            // First confirmation: Warn if active bookings exist
+            if (activeBookingsCount > 0) {
+                const warningMessage = `⚠️ Warning: Active Bookings Detected\n\nThis listing has ${activeBookingsCount} active booking(s). Deleting this listing will NOT cancel these bookings, but the listing will no longer be accessible.\n\nAre you sure you want to continue?`;
+                if (!window.confirm(warningMessage)) {
+                    setActionLoading(null);
+                    return;
+                }
+            }
+
+            // Second confirmation: Final deletion warning
+            const finalConfirmation = '🗑️ Permanent Deletion\n\nThis will permanently delete the listing and all associated photos from storage. This action cannot be undone.\n\nClick OK to confirm deletion.';
+            if (!window.confirm(finalConfirmation)) {
+                setActionLoading(null);
+                return;
+            }
+
+            // Step 3: Delete photos from Firebase Storage
+            if (listing.images && listing.images.length > 0) {
+                const deletePhotoPromises = listing.images.map(async (imageUrl) => {
+                    try {
+                        // Extract the storage path from the URL
+                        // URL format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media&token={token}
+                        const urlParts = imageUrl.split('/o/');
+                        if (urlParts.length > 1) {
+                            const pathWithParams = urlParts[1].split('?')[0];
+                            const storagePath = decodeURIComponent(pathWithParams);
+                            const imageRef = ref(storage, storagePath);
+                            await deleteObject(imageRef);
+                        }
+                    } catch (photoErr) {
+                        console.error('Error deleting photo:', photoErr);
+                        // Continue even if photo deletion fails
+                    }
+                });
+                await Promise.all(deletePhotoPromises);
+            }
+
+            // Step 4: Delete the listing from Firestore
             await deleteListing(listingId);
+
+            // Step 5: Update UI
             setListings(prev => prev.filter(l => l.id !== listingId));
         } catch (err) {
             console.error('Error deleting listing:', err);
-            setError('Failed to delete listing');
+            setError('Failed to delete listing: ' + (err instanceof Error ? err.message : 'Unknown error'));
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleListingLinkClick = async (listingId: string) => {
+        if (!onListingClick) return;
+        try {
+            setActionLoading(listingId);
+            const docRef = doc(db, 'listings', listingId);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                const data = { id: docSnap.id, ...docSnap.data() } as EquipmentListing;
+                onListingClick(data);
+            } else {
+                alert('Listing not found');
+            }
+        } catch (e) {
+            console.error(e);
         } finally {
             setActionLoading(null);
         }
@@ -142,6 +221,59 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
         } catch (err) {
             console.error('Error fetching deletion requests:', err);
             setError('Failed to load deletion requests');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchBookings = async () => {
+        try {
+            setLoading(true);
+            let q;
+            if (bookingFilter === 'active') {
+                q = query(collection(db, 'bookings'), where('status', 'in', ['pending', 'confirmed']));
+            } else {
+                q = query(collection(db, 'bookings'));
+            }
+
+            const querySnapshot = await getDocs(q);
+
+            const bookingPromises = querySnapshot.docs.map(async (docSnapshot) => {
+                const data = docSnapshot.data() as Booking;
+                const booking: BookingWithSeller = { id: docSnapshot.id, ...data };
+
+                // Fetch Seller Name
+                if (booking.sellerId) {
+                    try {
+                        const sellerDoc = await getDoc(doc(db, 'users', booking.sellerId));
+                        if (sellerDoc.exists()) {
+                            const sellerData = sellerDoc.data();
+                            booking.sellerName = sellerData.displayName;
+                            booking.sellerPhone = sellerData.phoneNumber;
+                        } else {
+                            booking.sellerName = 'Unknown Seller';
+                        }
+                    } catch (e) {
+                        console.error('Error fetching seller details', e);
+                        booking.sellerName = 'Error Loading';
+                    }
+                }
+                return booking;
+            });
+
+            const fetchedBookings = await Promise.all(bookingPromises);
+
+            // Sort by createdAt descending
+            fetchedBookings.sort((a, b) => {
+                const aTime = a.createdAt?.toDate?.() || new Date(0);
+                const bTime = b.createdAt?.toDate?.() || new Date(0);
+                return bTime.getTime() - aTime.getTime();
+            });
+
+            setBookings(fetchedBookings);
+        } catch (err) {
+            console.error('Error fetching bookings:', err);
+            setError('Failed to load bookings');
         } finally {
             setLoading(false);
         }
@@ -184,8 +316,32 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
             case 'rejected': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
             case 'sold': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
             case 'hidden': return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+            case 'confirmed': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+            case 'cancelled': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+            case 'completed': return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
             default: return 'bg-slate-100 text-slate-600';
         }
+    };
+
+    const formatDateRange = (start: any, end: any) => {
+        if (!start || !end) return 'N/A';
+        const s = start.toDate ? start.toDate() : new Date(start);
+        const e = end.toDate ? end.toDate() : new Date(end);
+
+        // Calculate days
+        const diffTime = Math.abs(e - s);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Inclusive
+
+        return (
+            <div>
+                <div className="font-medium text-slate-900 dark:text-white">
+                    {s.toLocaleDateString()} - {e.toLocaleDateString()}
+                </div>
+                <div className="text-xs text-slate-500">
+                    {diffDays} days
+                </div>
+            </div>
+        );
     };
 
     // Redirect if not admin
@@ -250,6 +406,15 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
                         >
                             Deletion Requests
                         </button>
+                        <button
+                            onClick={() => setActiveTab('bookings')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'bookings'
+                                ? 'bg-primary text-slate-900'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                }`}
+                        >
+                            Active Bookings
+                        </button>
                     </div>
 
                     {/* Filter Toggle (only for listings) */}
@@ -272,6 +437,30 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
                                     }`}
                             >
                                 All Listings
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Filter Toggle (only for bookings) */}
+                    {activeTab === 'bookings' && (
+                        <div className="flex bg-white dark:bg-surface-dark rounded-xl p-1 shadow-sm border border-slate-200 dark:border-slate-700">
+                            <button
+                                onClick={() => setBookingFilter('active')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${bookingFilter === 'active'
+                                    ? 'bg-primary text-slate-900'
+                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                    }`}
+                            >
+                                Active
+                            </button>
+                            <button
+                                onClick={() => setBookingFilter('all')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${bookingFilter === 'all'
+                                    ? 'bg-primary text-slate-900'
+                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                    }`}
+                            >
+                                All History
                             </button>
                         </div>
                     )}
@@ -427,7 +616,7 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
                             ))}
                         </div>
                     )
-                ) : (
+                ) : activeTab === 'deletions' ? (
                     deletionRequests.length === 0 ? (
                         <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-lg p-12 text-center">
                             <span className="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">person_remove</span>
@@ -478,9 +667,78 @@ const AdminPanelScreen: React.FC<AdminPanelScreenProps> = ({ onBack }) => {
                             ))}
                         </div>
                     )
+                ) : (
+                    bookings.length === 0 ? (
+                        <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-lg p-12 text-center">
+                            <span className="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">calendar_month</span>
+                            <h2 className="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-2">No active bookings</h2>
+                            <p className="text-slate-500 dark:text-slate-400">There are no bookings matching your criteria.</p>
+                        </div>
+                    ) : (
+                        <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-lg overflow-hidden border border-slate-200 dark:border-slate-800">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                        <tr>
+                                            <th className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Equipment</th>
+                                            <th className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Seller Side</th>
+                                            <th className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Buyer Side</th>
+                                            <th className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Duration</th>
+                                            <th className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Price</th>
+                                            <th className="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                        {bookings.map((booking) => (
+                                            <tr key={booking.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <button
+                                                        onClick={() => handleListingLinkClick(booking.listingId)}
+                                                        className="font-bold text-slate-900 dark:text-white hover:text-primary hover:underline text-left"
+                                                    >
+                                                        {booking.listingTitle}
+                                                    </button>
+                                                    <div className="text-xs text-slate-500">ID: {booking.listingId}</div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="material-symbols-outlined text-slate-400 text-lg">storefront</span>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-slate-700 dark:text-slate-300">{booking.sellerName}</span>
+                                                            <span className="text-xs text-slate-500">{booking.sellerPhone || 'No Phone'}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="material-symbols-outlined text-slate-400 text-lg">person</span>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-slate-700 dark:text-slate-300">{booking.renterName}</span>
+                                                            <span className="text-xs text-slate-500">{booking.renterPhone}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {formatDateRange(booking.startDate, booking.endDate)}
+                                                </td>
+                                                <td className="px-6 py-4 font-semibold text-primary">
+                                                    {formatCurrency(booking.totalPrice, i18n.language)}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusColor(booking.status)}`}>
+                                                        {booking.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )
                 )}
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

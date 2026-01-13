@@ -120,5 +120,19 @@ export const BookingService = {
      */
     async confirmBooking(bookingId: string) {
         return this.updateStatus(bookingId, 'confirmed');
+    },
+
+    /**
+     * Gets the count of active bookings for a listing
+     * Used to warn admins before deleting listings with active bookings
+     */
+    async getActiveBookingsForListing(listingId: string): Promise<number> {
+        const q = query(
+            collection(db, 'bookings'),
+            where('listingId', '==', listingId),
+            where('status', 'in', ['pending', 'confirmed'])
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.size;
     }
 };

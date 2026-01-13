@@ -93,7 +93,7 @@ const AppContent: React.FC = () => {
   }
 
   if (view === 'admin-panel') {
-    return <div className="page-transition"><AdminPanelScreen onBack={() => setView('search')} /></div>;
+    return <div className="page-transition"><AdminPanelScreen onBack={() => setView('search')} onListingClick={handleListingClick} /></div>;
   }
 
   if (view === 'profile') {

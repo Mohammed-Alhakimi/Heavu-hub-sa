@@ -18,12 +18,14 @@
 4. [Browsing Equipment](#browsing-equipment)
 5. [Equipment Categories](#equipment-categories)
 6. [Viewing Equipment Details](#viewing-equipment-details)
-7. [Creating a Listing](#creating-a-listing)
-8. [Managing Your Fleet](#managing-your-fleet)
-9. [Language & Accessibility](#language--accessibility)
-10. [User Journeys](#user-journeys)
-11. [Technical Stack](#technical-stack)
-12. [Frequently Asked Questions](#frequently-asked-questions)
+7. [Booking Equipment](#booking-equipment)
+8. [Creating a Listing](#creating-a-listing)
+9. [Managing Your Fleet](#managing-your-fleet)
+10. [Administrator Features](#administrator-features)
+11. [Language & Accessibility](#language--accessibility)
+12. [User Journeys](#user-journeys)
+13. [Technical Stack](#technical-stack)
+14. [Frequently Asked Questions](#frequently-asked-questions)
 
 ---
 
@@ -61,7 +63,7 @@
    ```
 
 2. **Configure Environment**
-   - Set up your `GEMINI_API_KEY` in the `.env.local` file
+   - Set up your `.env.local` file with necessary API keys (Firebase, etc.)
 
 3. **Start the Application**
    ```bash
@@ -91,7 +93,7 @@
 
 Once logged in, you gain access to:
 - **List Item** button to create new equipment listings
-- **My Fleet** section to manage your equipment
+- **My Fleet** section to manage your equipment sales and rentals
 - **User Profile** dropdown with **Edit Profile** and sign-out options
 
 ### Editing Your Profile
@@ -100,10 +102,18 @@ Once logged in, you gain access to:
 2. Select **"Edit Profile"** from the dropdown menu
 3. You can update the following information:
    - **Full Name** - Appears in the header and on your listings
-   - **Phone Number** - Required for potential buyers/renters to contact you
+   - **Phone Number** - Required for creating listings or requesting bookings
    - **Company Name** (Optional) - For professional dealers and rental companies
    - **Location** - Select your base city from the list of Saudi Arabian cities
    - **Profile Picture** - Upload a photo to personalize your account
+
+### Account Deletion
+
+1. Navigate to "Edit Profile"
+2. Scroll to the "Danger Zone" at the bottom
+3. Click **"Delete My Account"**
+4. Confirm your intention and re-enter your password
+5. A deletion request will be sent to our administrators for approval. Once approved, your data will be permanently removed.
 
 > 💡 **Tip:** Your name initial appears as your avatar when no profile photo is set. Changes to your profile are reflected immediately across the platform.
 
@@ -113,18 +123,30 @@ Once logged in, you gain access to:
 
 ### Search Functionality
 
-The search screen provides powerful filtering options to help you find the right equipment:
+The search screen provides powerful filtering strategies to help you find the right equipment.
 
-#### Search Filters
+#### Search Filters Panel
 
 | Filter | Description |
 |--------|-------------|
 | **Keywords** | Enter equipment names, makes, or models |
 | **Category** | Select from equipment categories (All, Excavator, Bulldozer, etc.) |
-| **Location** | Filter by equipment location |
-| **Radius** | Specify search radius in miles |
-| **Price Range** | Set minimum and maximum price limits |
-| **Conditions** | Filter by equipment condition |
+| **Location** | Filter by equipment location (Saudi Cities) |
+| **Radius** | Adjust search radius (10 - 500 miles) |
+| **Price Range** | Set minimum and maximum price limits (SAR) |
+
+#### Feed Controls
+
+- **Buy / Rent Toggle**: Switch between items for sale or for rent
+- **Items Per Page**: Select how many listings to view at once (5, 10, or 20)
+- **Sort By**: Order results by "Recommended", "Price: Low to High", or "Price: High to Low"
+
+### Pagination
+
+Heavy Hub uses dynamic pagination to browse large catalogs of equipment:
+- Use the **Next/Previous** arrows to navigate pages
+- Click specific **page numbers** to jump directly
+- Use the **Items Per Page** selector to control information density
 
 ### Equipment Cards
 
@@ -160,20 +182,19 @@ Click on any equipment card to view detailed information:
 ### Detail Page Sections
 
 1. **Image Gallery**
-   - Multiple high-resolution images
-   - Click to browse through photos
+   - Large main image for detailed inspection
+   - Placeholder for future 3D Tour features
 
 2. **Equipment Specifications**
    - Year of manufacture
    - Make and model
-   - Serial number
    - Operating hours (Hidden if 0)
    - Weight (Hidden if 0)
    - Net power
    - Engine model
    - Maximum dig depth (for excavators)
 
-> 💡 **Note:** Technical specifications like **Operating Hours** and **Weight** only appear if the seller has provided this information. If these fields are left blank during listing creation, they will be hidden from the public view.
+> 💡 **Note:** Technical specifications like **Operating Hours** and **Weight** only appear if the seller has provided this information.
 
 3. **Pricing Information**
    - **Buy Price** - Purchase cost
@@ -193,10 +214,22 @@ Click on any equipment card to view detailed information:
    - 🟢 Available / 🔴 Unavailable
    - 💰 For Sale / 🔄 For Rent
 
-### Navigation
+---
 
-- Use the **Back** button to return to search results
-- The header remains accessible for quick navigation
+## Booking Equipment
+
+You can request to book equipment directly from the detail page.
+
+### How to Request a Booking
+
+1. Ensure you are **logged in** and have a **phone number** saved in your profile.
+2. Select your **Start Date** and **End Date** on the calendar.
+3. The system will automatically calculate the estimated cost based on available Daily/Weekly/Monthly rates.
+4. Click **"Request Booking"**.
+5. The system performs a conflict check to ensure the dates are available.
+6. If successful, your booking request is created.
+
+> ℹ️ **Note:** Currently, booking history is stored in our database, but a user-facing "My Bookings" screen is under development. Please contact the seller directly to confirm details.
 
 ---
 
@@ -253,33 +286,47 @@ Click on any equipment card to view detailed information:
 
 Access **My Fleet** from the header navigation to manage your equipment listings.
 
-### Fleet Overview
+### Fleet Dashboard
 
 The My Fleet screen displays all your listings with:
 - Equipment thumbnail image
 - Title, year, make, model, and category
 - Current status badge
 - Pricing information
+- **Controls**: Change status or delete listing
 
 ### Listing Actions
 
-Use the fleet dashboard to monitor your listing progress:
-- **Pending** 🟡 - Waiting for admin review (not visible to public)
-- **Active** 🟢 - Approved and live in search results
-- **Rejected** 🔴 - Did not meet requirements (see notes/contact support)
-- **Draft** ⚪ - Saved but not yet submitted for review
+1. **Change Status**: Use the dropdown to switch between:
+   - **Active**: Visible to public (if approved)
+   - **Hidden**: Temporarily remove from search results
+   - **Sold**: Mark as sold (removes from active search)
 
-#### Delete Listing
+2. **Delete Listing**:
+   - Click the **Trash Icon**
+   - Confirm deletion
+   - **Note:** Deletion is blocked if the equipment has active future bookings.
 
-1. Click the trash icon
-2. Confirm deletion when prompted
-3. Click "Yes" to permanently delete
+---
 
-> ⚠️ **Warning:** Deleting a listing cannot be undone.
+## Administrator Features
 
-### Empty Fleet
+Admins have exclusive access to the **Admin Panel** to moderate the platform.
 
-If you haven't created any listings yet, you'll see a prompt to create your first listing.
+### Admin Panel Sections
+
+1. **Listings Management**
+   - **Pending Tab**: Review new submissions waiting for approval.
+   - **All Listings**: Browse the entire platform inventory.
+   - **Actions**:
+     - **Approve**: Publishes the listing to the live site.
+     - **Reject**: Returns the listing to the seller with a rejected status.
+     - **Delete**: Permanently removes a listing.
+
+2. **Deletion Requests**
+   - Review pending account deletion requests from users.
+   - **Approve**: Confirm the request (requires manual data cleanup in Firebase Console).
+   - **Reject**: Deny the request if necessary.
 
 ---
 
@@ -320,29 +367,21 @@ Heavy Hub is designed around specific user workflows to ensure a seamless experi
 
 ### 💰 The Buyer/Renter Journey
 1. **Land on Search**: Start at the homepage with a full list of available equipment.
-2. **Apply Filters**: Use the sidebar to filter by category (e.g., Excavator), price range, or location.
-3. **Explore Results**: Scroll through equipment cards to see high-level pricing and verification badges.
-4. **Deep Dive**: Click a card to view the full specification list, gallery, and seller information.
-5. **Switch Context**: Use the language switcher to view details in a preferred language.
+2. **Apply Filters**: Use the sidebar to filter by category, price, and location.
+3. **Sort & View**: Adjust sorting and items per page for optimal browsing.
+4. **Deep Dive**: View full specifications and gallery on the detail page.
+5. **Book**: Select dates and request a booking directly from the calendar.
 
 ### 🚜 The Seller/Dealer Journey
-1. **Authentication**: Sign up for a new account or log in to an existing one.
-2. **Setup Profile**: Access "Edit Profile" from the avatar menu to set contact details and a profile picture.
-3. **Start Listing**: Click **"List Item"** in the header to open the multi-step listing form.
-4. **Provide Specs**: Enter make, model, year, and optional hours/weight. Upload high-res photos.
-5. **Wait for Approval**: Submit the listing and view its "Pending" status in **My Fleet**.
-6. **Go Live**: Once an admin approves, the listing automatically moves to "Active" and appears in public search.
+1. **Authentication**: Sign up and complete your profile with phone and company details.
+2. **List Equipment**: Use the "List Item" form to upload details and photos.
+3. **Wait for Approval**: Listings start as "Pending" until an admin reviews them.
+4. **Manage Fleet**: Use "My Fleet" to update status (Active/Hidden/Sold) or delete listings.
 
 ### 🛡️ The Administrator Journey
-1. **Admin Access**: Log in with an administrator account to see the **"Admin Panel"** link in the header.
-2. **Queue Review**: Open the Admin Panel to see all listings currently in "Pending" status.
-3. **Verification**: Review listing details and images for quality and policy compliance.
-4. **Moderation**: Click **"Approve"** to publish the listing or **"Reject"** if it fails to meet platform standards.
-
-### ⚙️ The Global Experience
-- **Accessibility**: Toggle **Dark Mode** at any time for better visibility in different environments.
-- **Localization**: Change the language between **English, Arabic, or Urdu** to localize all UI text and currency formatting.
-- **Fleet Management**: Return to **My Fleet** to monitor performance or remove equipment that has been sold/rented.
+1. **Admin Access**: Log in with an admin account to access the **"Admin Panel"**.
+2. **Moderation**: Review "Pending" listings and approve valid ones.
+3. **Compliance**: Handle user deletion requests and ensure platform quality.
 
 ---
 
@@ -384,10 +423,10 @@ The Heavy Hub platform is built using modern, industry-standard technologies to 
 ### Account & Registration
 
 **Q: Is registration required to browse equipment?**
-> No, you can browse all listings without an account. However, creating a listing requires registration.
+> No, you can browse all listings without an account. However, creating a listing or booking equipment requires registration.
 
-**Q: How do I reset my password?**
-> Use the "Forgot Password" link on the login screen to receive a password reset email.
+**Q: How do I delete my account?**
+> Go to "Edit Profile" and select "Delete My Account" from the Danger Zone to submit a request.
 
 ### Listings
 
@@ -397,11 +436,8 @@ The Heavy Hub platform is built using modern, industry-standard technologies to 
 **Q: Can I sell AND rent the same equipment?**
 > Yes! When creating a listing, select "For Sale & Rent" to offer both options.
 
-**Q: How do I edit an existing listing?**
-> Access My Fleet, locate your listing, and update the status. Full editing features are coming soon.
-
-**Q: Are "Hours" and "Weight" mandatory for every listing?**
-> No, these fields are now optional. If you don't provide this information, the fields will be hidden on the equipment detail page to keep the listing clean.
+**Q: Are "Hours" and "Weight" mandatory?**
+> No, these fields are optional. If unspecified, they remain hidden to keep the listing clean.
 
 ### Technical
 
@@ -409,22 +445,13 @@ The Heavy Hub platform is built using modern, industry-standard technologies to 
 > Heavy Hub works on all modern browsers including Chrome, Firefox, Safari, and Edge.
 
 **Q: Is Heavy Hub available as a mobile app?**
-> Currently, Heavy Hub is a web application optimized for mobile browsers. A dedicated app may be released in the future.
-
----
-
-## Support & Contact
-
-For technical support or inquiries:
-
-- 📧 **Email:** support@heavyhub.com
-- 🌐 **Website:** www.heavyhub.com
+> Currently, Heavy Hub is a web application optimized for mobile browsers.
 
 ---
 
 <div align="center">
 
-**© 2024 Heavy Hub Inc. All rights reserved.**
+**© 2026 Heavy Hub Inc. All rights reserved.**
 
 *Built with React, TypeScript, and Firebase*
 

@@ -14,7 +14,8 @@ import {
     doc,
     updateDoc,
     deleteDoc,
-    getCountFromServer
+    getCountFromServer,
+    getDoc
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { EquipmentListing } from '../types';
@@ -130,7 +131,32 @@ export const updateListingStatus = async (listingId: string, status: EquipmentLi
 };
 
 /**
- * Permanently deletes a listing (Admin only)
+ * Gets a listing by ID
+ */
+export const getListingById = async (listingId: string): Promise<EquipmentListing | null> => {
+    try {
+        const listingRef = doc(db, LISTINGS_COLLECTION, listingId);
+        const listingSnap = await getDoc(listingRef);
+
+        if (!listingSnap.exists()) {
+            return null;
+        }
+
+        const data = listingSnap.data();
+        return {
+            id: listingSnap.id,
+            ...data,
+            approvedAt: data.approvedAt?.toDate?.() || data.approvedAt,
+            createdAt: data.createdAt?.toDate?.() || data.createdAt,
+        } as EquipmentListing;
+    } catch (error) {
+        console.error('Error getting listing:', error);
+        throw error;
+    }
+};
+
+/**
+ * Permanently deletes a listing and its associated photos from Storage (Admin only)
  */
 export const deleteListing = async (listingId: string) => {
     try {
